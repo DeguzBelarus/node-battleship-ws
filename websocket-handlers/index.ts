@@ -14,6 +14,7 @@ websocketsServer.on('connection', function connection(ws) {
 
   ws.on('close', () => {
     console.log(`disconnection...total online users: ${websocketsServer.clients.size}`);
+    messageHandler.clearDisconnectedUserRooms(ws, 0, websocketsServer);
   });
 
   ws.on('error', console.error);
@@ -26,14 +27,7 @@ websocketsServer.on('connection', function connection(ws) {
           const registrationData = JSON.parse(
             messageData.data as string
           ) as IRegistrationRequestData;
-          const responseRegistrationData = messageHandler.registration(
-            registrationData,
-            messageData.type,
-            messageData.id,
-            ws
-          );
-          responseRegistrationData.data = JSON.stringify(responseRegistrationData.data);
-          ws.send(JSON.stringify(responseRegistrationData));
+          messageHandler.registration(registrationData, messageData.type, messageData.id, ws);
           ws.send(JSON.stringify(messageHandler.getRoomsData(messageData.id)));
           break;
         case 'create_room':
@@ -54,13 +48,13 @@ websocketsServer.on('connection', function connection(ws) {
           const addUserToRoomData = JSON.parse(
             messageData.data as string
           ) as IAddUserToRoomRequestData;
-          messageHandler.addUserToRoom(addUserToRoomData, messageData.type, messageData.id, ws);
-          ws.send(JSON.stringify(messageHandler.getRoomsData(messageData.id)));
-          websocketsServer.clients.forEach((client) => {
-            if (client !== ws && client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify(messageHandler.getRoomsData(messageData.id)));
-            }
-          });
+          messageHandler.addUserToRoom(
+            addUserToRoomData,
+            messageData.type,
+            messageData.id,
+            ws,
+            websocketsServer
+          );
           break;
       }
     } catch (error) {

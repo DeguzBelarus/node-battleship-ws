@@ -1,10 +1,10 @@
 import WebSocket from 'ws';
+import { IncomingMessage } from 'http';
 
 import {
   IAddUserToRoomRequestData,
   ICreateRoomResponse,
   IRegistrationRequestData,
-  IRegistrationResponse,
   IUserData,
   IUsersRoom,
   WebsocketMessageType,
@@ -50,6 +50,27 @@ class MessageHandler {
   gameCounter = 0;
   playerCounter = 0;
 
+  clearDisconnectedUserRooms(
+    ws: WebSocket,
+    id: number,
+    websocketsServer: WebSocket.Server<typeof WebSocket, typeof IncomingMessage>
+  ) {
+    this.roomsData = this.roomsData.filter((room) => room.roomUsers[0]?.ws !== ws);
+
+    const type: WebsocketMessageType = 'update_room';
+    const roomsData = JSON.stringify({
+      type,
+      id,
+      data: JSON.stringify(this.roomsData),
+    });
+
+    websocketsServer.clients.forEach((client) => {
+      if (client !== ws && client.readyState === WebSocket.OPEN) {
+        client.send(roomsData);
+      }
+    });
+  }
+
   getRoomsData(id: number) {
     const type: WebsocketMessageType = 'update_room';
     return {
@@ -64,30 +85,36 @@ class MessageHandler {
     type: WebsocketMessageType,
     id: number,
     ws: WebSocket
-  ): IRegistrationResponse {
+  ) {
     if (data.name?.length < 5) {
-      return {
-        type,
-        id,
-        data: {
-          name: '',
-          index: 0,
-          error: true,
-          errorText: 'Minimum username length is 5 symbols',
-        },
-      };
+      ws.send(
+        JSON.stringify({
+          type,
+          id,
+          data: JSON.stringify({
+            name: '',
+            index: 0,
+            error: true,
+            errorText: 'Minimum username length is 5 symbols',
+          }),
+        })
+      );
+      return;
     }
     if (data.password?.length < 5) {
-      return {
-        type,
-        id,
-        data: {
-          name: '',
-          index: 0,
-          error: true,
-          errorText: 'Minimum password length is 5 symbols',
-        },
-      };
+      ws.send(
+        JSON.stringify({
+          type,
+          id,
+          data: JSON.stringify({
+            name: '',
+            index: 0,
+            error: true,
+            errorText: 'Minimum password length is 5 symbols',
+          }),
+        })
+      );
+      return;
     }
 
     const existedUser = this.users.find((user) => user.name === data.name);
@@ -101,42 +128,50 @@ class MessageHandler {
             return user;
           }
         });
-        return {
-          type,
-          id,
-          data: {
-            name: existedUser.name,
-            index: existedUser.index,
-            error: false,
-            errorText: '',
-          },
-        };
+        ws.send(
+          JSON.stringify({
+            type,
+            id,
+            data: JSON.stringify({
+              name: existedUser.name,
+              index: existedUser.index,
+              error: false,
+              errorText: '',
+            }),
+          })
+        );
       } else {
-        return {
-          type,
-          id,
-          data: {
-            name: '',
-            index: 0,
-            error: true,
-            errorText: 'Wrong password',
-          },
-        };
+        console.log('here');
+        ws.send(
+          JSON.stringify({
+            type,
+            id,
+            data: JSON.stringify({
+              name: '',
+              index: 0,
+              error: true,
+              errorText: 'Wrong password',
+            }),
+          })
+        );
       }
+      return;
     }
 
     const newUser = new User(data.name, this.users.length, data.password, ws);
     this.users = [...this.users, newUser];
-    return {
-      type,
-      id,
-      data: {
-        name: newUser.name,
-        index: newUser.index,
-        error: false,
-        errorText: '',
-      },
-    };
+    ws.send(
+      JSON.stringify({
+        type,
+        id,
+        data: JSON.stringify({
+          name: newUser.name,
+          index: newUser.index,
+          error: false,
+          errorText: '',
+        }),
+      })
+    );
   }
 
   createRoom(type: WebsocketMessageType, id: number, ws: WebSocket): ICreateRoomResponse {
@@ -155,7 +190,8 @@ class MessageHandler {
     data: IAddUserToRoomRequestData,
     type: WebsocketMessageType,
     id: number,
-    ws: WebSocket
+    ws: WebSocket,
+    websocketsServer: WebSocket.Server<typeof WebSocket, typeof IncomingMessage>
   ) {
     type = 'create_game';
     this.gameCounter++;
@@ -163,6 +199,7 @@ class MessageHandler {
 
     const gameOwner = this.roomsData.find((room) => room.roomId === data.indexRoom)
       ?.roomUsers[0] as IUserData;
+    const gameGuest = this.users.find((user) => user.ws === ws) as IUserData;
     const ownerGameData = new Game(this.gameCounter, this.playerCounter);
     this.playerCounter++;
     const guestGameData = new Game(this.gameCounter, this.playerCounter);
@@ -183,6 +220,21 @@ class MessageHandler {
     );
 
     this.roomsData = this.roomsData.filter((room) => room.roomId !== data.indexRoom);
+    this.roomsData = this.roomsData.filter((room) => room.roomUsers[0]?.name !== gameGuest.name);
+    this.roomsData = this.roomsData.filter((room) => room.roomUsers[0]?.name !== gameOwner.name);
+
+    type = 'update_room';
+    const roomsData = JSON.stringify({
+      type,
+      id,
+      data: JSON.stringify(this.roomsData),
+    });
+    ws.send(roomsData);
+    websocketsServer.clients.forEach((client) => {
+      if (client !== ws && client.readyState === WebSocket.OPEN) {
+        client.send(roomsData);
+      }
+    });
   }
 }
 
