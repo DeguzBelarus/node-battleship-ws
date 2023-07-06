@@ -7,6 +7,7 @@ import {
 } from '../types/types';
 import { WEBSOCKET_CONFIG } from '../configs/websocketsConfig';
 import { messageHandler } from './handlers';
+import { DEFAULT_ID_VALUE } from '../constants/constants';
 
 export const websocketsServer = new WebSocketServer(WEBSOCKET_CONFIG);
 websocketsServer.on('connection', function connection(ws) {
@@ -14,7 +15,7 @@ websocketsServer.on('connection', function connection(ws) {
 
   ws.on('close', () => {
     console.log(`disconnection...total online users: ${websocketsServer.clients.size}`);
-    messageHandler.clearDisconnectedUserRooms(ws, 0, websocketsServer);
+    messageHandler.clearDisconnectedUserRooms(ws, DEFAULT_ID_VALUE, websocketsServer);
   });
 
   ws.on('error', console.error);

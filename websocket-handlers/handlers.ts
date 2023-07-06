@@ -11,6 +11,7 @@ import {
   IGameData,
 } from '../types/types';
 import { User, Room, Game } from './schemas';
+import { DEFAULT_ID_VALUE, MIN_PASSWORD_LENGTH, MIN_USERNAME_LENGTH } from '../constants/constants';
 
 class MessageHandler {
   users: Array<IUserData> = [];
@@ -65,14 +66,14 @@ class MessageHandler {
     id: number,
     ws: WebSocket
   ) {
-    if (data.name?.length < 5) {
+    if (data.name?.length < MIN_USERNAME_LENGTH) {
       ws.send(
         JSON.stringify({
           type,
           id,
           data: JSON.stringify({
             name: '',
-            index: 0,
+            index: DEFAULT_ID_VALUE,
             error: true,
             errorText: 'Minimum username length is 5 symbols',
           }),
@@ -80,7 +81,7 @@ class MessageHandler {
       );
       return;
     }
-    if (data.password?.length < 5) {
+    if (data.password?.length < MIN_PASSWORD_LENGTH) {
       ws.send(
         JSON.stringify({
           type,
@@ -199,6 +200,10 @@ class MessageHandler {
     const gameOwner = this.roomsData.find((room) => room.roomId === data.indexRoom)
       ?.roomUsers[0] as IUserData;
     const gameGuest = this.users.find((user) => user.ws === ws) as IUserData;
+    if (gameGuest.name === gameOwner.name) {
+      console.log(`${gameGuest.name}, you cannot join your own room`);
+      return;
+    }
     const ownerGameData = new Game(this.gameCounter, this.playerCounter);
     this.playerCounter++;
     const guestGameData = new Game(this.gameCounter, this.playerCounter);
