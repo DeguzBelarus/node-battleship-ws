@@ -27,7 +27,12 @@ websocketsServer.on('connection', function connection(ws) {
           const registrationData = JSON.parse(
             messageData.data as string
           ) as IRegistrationRequestData;
-          messageHandler.registration(registrationData, messageData.type, messageData.id, ws);
+          messageHandler.registrationOrLogin(
+            registrationData,
+            messageData.type,
+            messageData.id,
+            ws
+          );
           ws.send(JSON.stringify(messageHandler.getRoomsData(messageData.id)));
           break;
         case 'create_room':

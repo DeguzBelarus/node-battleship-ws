@@ -10,42 +10,13 @@ import {
   WebsocketMessageType,
   IGameData,
 } from '../types/types';
-
-class User implements IUserData {
-  name: string;
-  index: number;
-  password?: string;
-  ws: WebSocket;
-  constructor(name: string, index: number, password: string, ws: WebSocket) {
-    this.name = name;
-    this.index = index;
-    this.password = password;
-    this.ws = ws;
-  }
-}
-
-class Room implements IUsersRoom {
-  roomId: number;
-  roomUsers: Array<IUserData>;
-  constructor(roomId: number, roomUsers: Array<IUserData>) {
-    this.roomId = roomId;
-    this.roomUsers = roomUsers;
-  }
-}
-
-class Game implements IGameData {
-  idGame: number;
-  idPlayer: number;
-  constructor(idGame: number, idPlayer: number) {
-    this.idGame = idGame;
-    this.idPlayer = idPlayer;
-  }
-}
+import { User, Room, Game } from './schemas';
 
 class MessageHandler {
   users: Array<IUserData> = [];
   roomsData: Array<IUsersRoom> = [];
   gamesData: Array<IGameData> = [];
+  usersLoggedIn: Array<string> = [];
   roomCounter = 0;
   gameCounter = 0;
   playerCounter = 0;
@@ -55,8 +26,16 @@ class MessageHandler {
     id: number,
     websocketsServer: WebSocket.Server<typeof WebSocket, typeof IncomingMessage>
   ) {
-    this.roomsData = this.roomsData.filter((room) => room.roomUsers[0]?.ws !== ws);
+    const disconnectedUser = this.users.find((user) => user.ws === ws);
+    if (disconnectedUser) {
+      this.usersLoggedIn = this.usersLoggedIn.filter(
+        (userOnline) => userOnline !== disconnectedUser.name
+      );
+      console.log(`${disconnectedUser?.name} disconnected`);
+      console.log(`users online: ${this.usersLoggedIn}`);
+    }
 
+    this.roomsData = this.roomsData.filter((room) => room.roomUsers[0]?.ws !== ws);
     const type: WebsocketMessageType = 'update_room';
     const roomsData = JSON.stringify({
       type,
@@ -80,7 +59,7 @@ class MessageHandler {
     };
   }
 
-  registration(
+  registrationOrLogin(
     data: IRegistrationRequestData,
     type: WebsocketMessageType,
     id: number,
@@ -120,6 +99,21 @@ class MessageHandler {
     const existedUser = this.users.find((user) => user.name === data.name);
     if (existedUser) {
       if (existedUser.password === data.password) {
+        if (this.usersLoggedIn.includes(existedUser.name)) {
+          ws.send(
+            JSON.stringify({
+              type,
+              id,
+              data: JSON.stringify({
+                name: '',
+                index: 0,
+                error: true,
+                errorText: 'You have already logged in via other device',
+              }),
+            })
+          );
+          return;
+        }
         this.users = this.users.map((user) => {
           if (user.name === existedUser.name) {
             user.ws = ws;
@@ -140,8 +134,10 @@ class MessageHandler {
             }),
           })
         );
+        this.usersLoggedIn.push(existedUser.name);
+        console.log(`${existedUser.name} has logged in`);
+        console.log(`users online: ${this.usersLoggedIn}`);
       } else {
-        console.log('here');
         ws.send(
           JSON.stringify({
             type,
@@ -172,6 +168,9 @@ class MessageHandler {
         }),
       })
     );
+    this.usersLoggedIn.push(newUser.name);
+    console.log(`${newUser.name} has logged in`);
+    console.log(`users online: ${this.usersLoggedIn}`);
   }
 
   createRoom(type: WebsocketMessageType, id: number, ws: WebSocket): ICreateRoomResponse {

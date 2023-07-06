@@ -11,7 +11,7 @@ export const httpServer = createServer(router);
 (function () {
   try {
     httpServer.listen(PORT, () => {
-      console.log(`Server has been started on port ${PORT}...`);
+      console.log(`Server has been started on http://localhost:${PORT}...`);
     });
   } catch (error) {
     if (error instanceof Error) {
