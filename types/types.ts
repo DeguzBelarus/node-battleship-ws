@@ -105,6 +105,19 @@ export interface IAddUserShipsRequest {
   data: IAddUserShipsRequestData | string;
 }
 
+export interface IAttackRequestData {
+  x: number;
+  y: number;
+  gameId: number;
+  indexPlayer: number;
+}
+
+export interface IAttackRequest {
+  type: WebsocketMessageType;
+  id: number;
+  data: IAttackRequestData | string;
+}
+
 export interface IStartGameResponseData {
   ships: Array<IShipData>;
   currentPlayerIndex: number;
@@ -129,9 +142,13 @@ export interface ITurnResponse {
 export interface IActiveGamePlayerData {
   ships: Array<IShipData>;
   indexPlayer: number;
+  shipsMatrix?: BattlefieldMatrixType;
 }
 
 export interface IActiveGame {
   gameId: number;
   gamePlayersData: Array<IActiveGamePlayerData>;
 }
+
+export type SellType = 'free' | 'uh' | 'ul' | 'um' | 'us' | 'dh' | 'dl' | 'dm' | 'ds';
+export type BattlefieldMatrixType = Array<Array<SellType>>;

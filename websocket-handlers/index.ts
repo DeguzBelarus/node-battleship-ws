@@ -3,6 +3,7 @@ import WebSocket, { WebSocketServer } from 'ws';
 import {
   IAddUserShipsRequestData,
   IAddUserToRoomRequestData,
+  IAttackRequestData,
   IRegistrationRequestData,
   IWebsocketMessage,
 } from '../types/types';
@@ -67,7 +68,14 @@ websocketsServer.on('connection', function connection(ws) {
           const addUserShipsData = JSON.parse(
             messageData.data as string
           ) as IAddUserShipsRequestData;
-          messageHandler.addUserShipsData(addUserShipsData, messageData.type, messageData.id);
+          messageHandler.addUserShips(addUserShipsData, messageData.type, messageData.id);
+          break;
+        case 'attack':
+          const attackData = JSON.parse(messageData.data as string) as IAttackRequestData;
+          messageHandler.attack(attackData, messageData.type, messageData.id);
+          break;
+        case 'randomAttack':
+          console.log('randomAttack');
           break;
       }
     } catch (error) {

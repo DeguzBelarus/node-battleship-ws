@@ -14,9 +14,11 @@ import {
   IActiveGamePlayerData,
   IStartGameResponse,
   ITurnResponse,
+  IAttackRequestData,
 } from '../types/types';
 import { User, Room, Game, ActiveGame } from './schemas';
 import { DEFAULT_ID_VALUE, MIN_PASSWORD_LENGTH, MIN_USERNAME_LENGTH } from '../constants/constants';
+import { battlefieldMatrixGenerator } from './utils';
 
 class MessageHandler {
   users: Array<IUserData> = [];
@@ -244,7 +246,7 @@ class MessageHandler {
     });
   }
 
-  addUserShipsData(data: IAddUserShipsRequestData, type: WebsocketMessageType, id: number) {
+  addUserShips(data: IAddUserShipsRequestData, type: WebsocketMessageType, id: number) {
     type = 'start_game';
     const foundActiveGame = this.activeGamesData.find(
       (activeGame) => activeGame.gameId === data.gameId
@@ -303,6 +305,22 @@ class MessageHandler {
       firstPlayer.ws?.send(JSON.stringify(firstPlayerResponse));
       secondPlayer.ws?.send(JSON.stringify(firstPlayerResponse));
 
+      const firstPlayerBattlefield = battlefieldMatrixGenerator(
+        foundActiveGame.gamePlayersData[0].ships
+      );
+      const secondPlayerBattlefield = battlefieldMatrixGenerator(
+        foundActiveGame.gamePlayersData[1].ships
+      );
+      this.activeGamesData = this.activeGamesData.map((activeGame) => {
+        if (activeGame.gameId !== data.gameId) {
+          return activeGame;
+        } else {
+          activeGame.gamePlayersData[0].shipsMatrix = firstPlayerBattlefield;
+          activeGame.gamePlayersData[1].shipsMatrix = secondPlayerBattlefield;
+          return activeGame;
+        }
+      });
+
       type = 'turn';
       const turnResponse: ITurnResponse = {
         id,
@@ -316,6 +334,11 @@ class MessageHandler {
       firstPlayer.ws?.send(JSON.stringify(turnResponse));
       secondPlayer.ws?.send(JSON.stringify(turnResponse));
     }
+  }
+
+  attack(data: IAttackRequestData, type: WebsocketMessageType, id: number) {
+    console.log(data);
+    console.log(this.users.find((user) => user.index === data.indexPlayer)?.name);
   }
 }
 
