@@ -24,6 +24,7 @@ export type WebsocketMessageType =
   | 'finish';
 export type ShipType = 'small' | 'medium' | 'large' | 'huge';
 export type SellType = 'free' | 'uh' | 'ul' | 'um' | 'us' | 'dh' | 'dl' | 'dm' | 'ds';
+export type BattlefieldMatrixType = Array<Array<SellType>>;
 export type AttackResultType = 'miss' | 'killed' | 'shot';
 
 export interface IUserData {
@@ -151,5 +152,3 @@ export interface IActiveGame {
   gameId: number;
   gamePlayersData: Array<IActiveGamePlayerData>;
 }
-
-export type BattlefieldMatrixType = Array<Array<SellType>>;
