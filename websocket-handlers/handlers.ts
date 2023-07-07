@@ -280,8 +280,7 @@ class MessageHandler {
         (user) => user.index === foundActiveGame.gamePlayersData[1].indexPlayer
       ) as IUserData;
 
-      const currentPlayerIndex =
-        firstPlayer.index < secondPlayer.index ? firstPlayer.index : secondPlayer.index;
+      const currentPlayerIndex = Math.random() * 1 <= 0.5 ? firstPlayer.index : secondPlayer.index;
       const firstPlayerResponse: IStartGameResponse = {
         id,
         type,
