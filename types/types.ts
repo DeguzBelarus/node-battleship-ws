@@ -23,6 +23,8 @@ export type WebsocketMessageType =
   | 'turn'
   | 'finish';
 export type ShipType = 'small' | 'medium' | 'large' | 'huge';
+export type SellType = 'free' | 'uh' | 'ul' | 'um' | 'us' | 'dh' | 'dl' | 'dm' | 'ds';
+export type AttackResultType = 'miss' | 'killed' | 'shot';
 
 export interface IUserData {
   name: string;
@@ -150,5 +152,4 @@ export interface IActiveGame {
   gamePlayersData: Array<IActiveGamePlayerData>;
 }
 
-export type SellType = 'free' | 'uh' | 'ul' | 'um' | 'us' | 'dh' | 'dl' | 'dm' | 'ds';
 export type BattlefieldMatrixType = Array<Array<SellType>>;
