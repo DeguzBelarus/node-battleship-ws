@@ -15,10 +15,13 @@ import {
   IStartGameResponse,
   ITurnResponse,
   IAttackRequestData,
+  BattlefieldMatrixType,
+  SellType,
+  IAttackResponse,
 } from '../types/types';
-import { User, Room, Game, ActiveGame } from './schemas';
+import { User, Room, Game, ActiveGame } from '../schemas/schemas';
 import { DEFAULT_ID_VALUE, MIN_PASSWORD_LENGTH, MIN_USERNAME_LENGTH } from '../constants/constants';
-import { battlefieldMatrixGenerator } from './utils';
+import { attackHandler, battlefieldMatrixGenerator } from './utils';
 
 class MessageHandler {
   users: Array<IUserData> = [];
@@ -337,8 +340,54 @@ class MessageHandler {
   }
 
   attack(data: IAttackRequestData, type: WebsocketMessageType, id: number) {
-    console.log(data);
-    console.log(this.users.find((user) => user.index === data.indexPlayer)?.name);
+    const currentGame = this.activeGamesData.find(
+      (activeGame) => activeGame.gameId === data.gameId
+    );
+    const attackRecipient = currentGame?.gamePlayersData.filter(
+      (playerData) => playerData.indexPlayer !== data.indexPlayer
+    )[0] as IActiveGamePlayerData;
+    const attackRecipientSocket = this.users.find(
+      (user) => user.index === attackRecipient.indexPlayer
+    )?.ws;
+    const attackerSocket = this.users.find((user) => user.index === data.indexPlayer)?.ws;
+
+    const attackData = attackHandler(
+      attackRecipient.shipsMatrix as BattlefieldMatrixType,
+      data.x,
+      data.y
+    );
+
+    if (attackData.attackedSell.startsWith('f')) {
+      const responseData: IAttackResponse = {
+        id,
+        type,
+        data: {
+          currentPlayer: data.indexPlayer,
+          status: 'miss',
+          position: {
+            x: data.x,
+            y: data.y,
+          },
+        },
+      };
+      responseData.data = JSON.stringify(responseData.data);
+      attackerSocket?.send(JSON.stringify(responseData));
+      attackRecipientSocket?.send(JSON.stringify(responseData));
+
+      type = 'turn';
+      const turnResponse: ITurnResponse = {
+        id,
+        type,
+        data: {
+          currentPlayer: attackRecipient.indexPlayer,
+        },
+      };
+      turnResponse.data = JSON.stringify(turnResponse.data);
+      attackerSocket?.send(JSON.stringify(turnResponse));
+      attackRecipientSocket?.send(JSON.stringify(turnResponse));
+    }
+    console.log(attackData);
+    console.log(this.activeGamesData);
   }
 }
 

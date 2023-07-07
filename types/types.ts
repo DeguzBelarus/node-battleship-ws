@@ -27,6 +27,12 @@ export type SellType = 'free' | 'uh' | 'ul' | 'um' | 'us' | 'dh' | 'dl' | 'dm' |
 export type BattlefieldMatrixType = Array<Array<SellType>>;
 export type AttackResultType = 'miss' | 'killed' | 'shot';
 
+export interface IAtackResult {
+  attackedSell: SellType;
+  updatedMatrix: Nullable<BattlefieldMatrixType>;
+  isKilled: boolean;
+}
+
 export interface IUserData {
   name: string;
   index: number;
@@ -119,6 +125,18 @@ export interface IAttackRequest {
   type: WebsocketMessageType;
   id: number;
   data: IAttackRequestData | string;
+}
+
+export interface IAttackResponseData {
+  position: IShipPositionData;
+  currentPlayer: number;
+  status: AttackResultType;
+}
+
+export interface IAttackResponse {
+  type: WebsocketMessageType;
+  id: number;
+  data: IAttackResponseData | string;
 }
 
 export interface IStartGameResponseData {
