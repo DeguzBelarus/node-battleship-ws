@@ -9,18 +9,23 @@ import {
   IUsersRoom,
   WebsocketMessageType,
   IGameData,
+  IAddUserShipsRequestData,
+  IActiveGame,
+  IActiveGamePlayerData,
+  IStartGameResponse,
+  ITurnResponse,
 } from '../types/types';
-import { User, Room, Game } from './schemas';
+import { User, Room, Game, ActiveGame } from './schemas';
 import { DEFAULT_ID_VALUE, MIN_PASSWORD_LENGTH, MIN_USERNAME_LENGTH } from '../constants/constants';
 
 class MessageHandler {
   users: Array<IUserData> = [];
   roomsData: Array<IUsersRoom> = [];
-  gamesData: Array<IGameData> = [];
+  playersData: Array<IGameData> = [];
+  activeGamesData: Array<IActiveGame> = [];
   usersLoggedIn: Array<string> = [];
   roomCounter = 0;
   gameCounter = 0;
-  playerCounter = 0;
 
   clearDisconnectedUserRooms(
     ws: WebSocket,
@@ -195,7 +200,6 @@ class MessageHandler {
   ) {
     type = 'create_game';
     this.gameCounter++;
-    this.playerCounter++;
 
     const gameOwner = this.roomsData.find((room) => room.roomId === data.indexRoom)
       ?.roomUsers[0] as IUserData;
@@ -204,9 +208,8 @@ class MessageHandler {
       console.log(`${gameGuest.name}, you cannot join your own room`);
       return;
     }
-    const ownerGameData = new Game(this.gameCounter, this.playerCounter);
-    this.playerCounter++;
-    const guestGameData = new Game(this.gameCounter, this.playerCounter);
+    const ownerGameData = new Game(this.gameCounter, gameOwner.index);
+    const guestGameData = new Game(this.gameCounter, gameGuest.index);
 
     gameOwner.ws?.send(
       JSON.stringify({
@@ -239,6 +242,81 @@ class MessageHandler {
         client.send(roomsData);
       }
     });
+  }
+
+  addUserShipsData(data: IAddUserShipsRequestData, type: WebsocketMessageType, id: number) {
+    type = 'start_game';
+    const foundActiveGame = this.activeGamesData.find(
+      (activeGame) => activeGame.gameId === data.gameId
+    );
+
+    if (!foundActiveGame) {
+      const gamePlayersData: Array<IActiveGamePlayerData> = [
+        {
+          indexPlayer: data.indexPlayer,
+          ships: data.ships,
+        },
+      ];
+      const newActiveGame = new ActiveGame(data.gameId, gamePlayersData);
+      this.activeGamesData = [...this.activeGamesData, newActiveGame];
+    } else {
+      const secondGamePlayerData: IActiveGamePlayerData = {
+        indexPlayer: data.indexPlayer,
+        ships: data.ships,
+      };
+      this.activeGamesData = this.activeGamesData.map((activeGame) => {
+        if (activeGame.gameId !== data.gameId) {
+          return activeGame;
+        } else {
+          activeGame.gamePlayersData = [...activeGame.gamePlayersData, secondGamePlayerData];
+          return activeGame;
+        }
+      });
+
+      const firstPlayer = this.users.find(
+        (user) => user.index === foundActiveGame.gamePlayersData[0].indexPlayer
+      ) as IUserData;
+      const secondPlayer = this.users.find(
+        (user) => user.index === foundActiveGame.gamePlayersData[1].indexPlayer
+      ) as IUserData;
+
+      const currentPlayerIndex =
+        firstPlayer.index < secondPlayer.index ? firstPlayer.index : secondPlayer.index;
+      const firstPlayerResponse: IStartGameResponse = {
+        id,
+        type,
+        data: {
+          currentPlayerIndex,
+          ships: foundActiveGame.gamePlayersData[0].ships,
+        },
+      };
+      firstPlayerResponse.data = JSON.stringify(firstPlayerResponse.data);
+      const secondPlayerResponse: IStartGameResponse = {
+        id,
+        type,
+        data: {
+          currentPlayerIndex,
+          ships: foundActiveGame.gamePlayersData[1].ships,
+        },
+      };
+      secondPlayerResponse.data = JSON.stringify(secondPlayerResponse.data);
+
+      firstPlayer.ws?.send(JSON.stringify(firstPlayerResponse));
+      secondPlayer.ws?.send(JSON.stringify(firstPlayerResponse));
+
+      type = 'turn';
+      const turnResponse: ITurnResponse = {
+        id,
+        type,
+        data: {
+          currentPlayer: currentPlayerIndex,
+        },
+      };
+      turnResponse.data = JSON.stringify(turnResponse.data);
+
+      firstPlayer.ws?.send(JSON.stringify(turnResponse));
+      secondPlayer.ws?.send(JSON.stringify(turnResponse));
+    }
   }
 }
 

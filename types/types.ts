@@ -22,6 +22,7 @@ export type WebsocketMessageType =
   | 'randomAttack'
   | 'turn'
   | 'finish';
+export type ShipType = 'small' | 'medium' | 'large' | 'huge';
 
 export interface IUserData {
   name: string;
@@ -78,4 +79,59 @@ export interface IAddUserToRoomRequest {
   type: WebsocketMessageType;
   id: number;
   data: IAddUserToRoomRequestData | string;
+}
+
+interface IShipPositionData {
+  x: number;
+  y: number;
+}
+
+export interface IShipData {
+  position: IShipPositionData;
+  direction: boolean;
+  length: number;
+  type: ShipType;
+}
+
+export interface IAddUserShipsRequestData {
+  gameId: number;
+  ships: Array<IShipData>;
+  indexPlayer: number;
+}
+
+export interface IAddUserShipsRequest {
+  type: WebsocketMessageType;
+  id: number;
+  data: IAddUserShipsRequestData | string;
+}
+
+export interface IStartGameResponseData {
+  ships: Array<IShipData>;
+  currentPlayerIndex: number;
+}
+
+export interface IStartGameResponse {
+  type: WebsocketMessageType;
+  id: number;
+  data: IStartGameResponseData | string;
+}
+
+export interface ITurnResponseData {
+  currentPlayer: number;
+}
+
+export interface ITurnResponse {
+  type: WebsocketMessageType;
+  id: number;
+  data: ITurnResponseData | string;
+}
+
+export interface IActiveGamePlayerData {
+  ships: Array<IShipData>;
+  indexPlayer: number;
+}
+
+export interface IActiveGame {
+  gameId: number;
+  gamePlayersData: Array<IActiveGamePlayerData>;
 }

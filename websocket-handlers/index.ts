@@ -1,6 +1,7 @@
 import WebSocket, { WebSocketServer } from 'ws';
 
 import {
+  IAddUserShipsRequestData,
   IAddUserToRoomRequestData,
   IRegistrationRequestData,
   IWebsocketMessage,
@@ -9,7 +10,7 @@ import { WEBSOCKET_CONFIG } from '../configs/websocketsConfig';
 import { messageHandler } from './handlers';
 import { DEFAULT_ID_VALUE } from '../constants/constants';
 
-export const websocketsServer = new WebSocketServer(WEBSOCKET_CONFIG);
+const websocketsServer = new WebSocketServer(WEBSOCKET_CONFIG);
 websocketsServer.on('connection', function connection(ws) {
   console.log(`connection...total online users: ${websocketsServer.clients.size}`);
 
@@ -61,6 +62,12 @@ websocketsServer.on('connection', function connection(ws) {
             ws,
             websocketsServer
           );
+          break;
+        case 'add_ships':
+          const addUserShipsData = JSON.parse(
+            messageData.data as string
+          ) as IAddUserShipsRequestData;
+          messageHandler.addUserShipsData(addUserShipsData, messageData.type, messageData.id);
           break;
       }
     } catch (error) {

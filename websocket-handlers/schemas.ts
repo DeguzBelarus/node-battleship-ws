@@ -1,6 +1,12 @@
 import WebSocket from 'ws';
 
-import { IUserData, IUsersRoom, IGameData } from '../types/types';
+import {
+  IUserData,
+  IUsersRoom,
+  IGameData,
+  IActiveGame,
+  IActiveGamePlayerData,
+} from '../types/types';
 
 export class User implements IUserData {
   name: string;
@@ -30,5 +36,14 @@ export class Game implements IGameData {
   constructor(idGame: number, idPlayer: number) {
     this.idGame = idGame;
     this.idPlayer = idPlayer;
+  }
+}
+
+export class ActiveGame implements IActiveGame {
+  gameId: number;
+  gamePlayersData: Array<IActiveGamePlayerData>;
+  constructor(gameId: number, gamePlayersData: Array<IActiveGamePlayerData>) {
+    this.gameId = gameId;
+    this.gamePlayersData = gamePlayersData;
   }
 }
