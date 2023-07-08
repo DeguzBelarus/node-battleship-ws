@@ -16,7 +16,6 @@ import {
   ITurnResponse,
   IAttackRequestData,
   BattlefieldMatrixType,
-  SellType,
   IAttackResponse,
 } from '../types/types';
 import { User, Room, Game, ActiveGame } from '../schemas/schemas';
@@ -395,10 +394,8 @@ class MessageHandler {
             activeGame.gamePlayersData = activeGame.gamePlayersData.map((player) => {
               if (player.indexPlayer === attackRecipient.indexPlayer) {
                 player.shipsMatrix = updatedMatrix;
-                return player;
-              } else {
-                return player;
               }
+              return player;
             });
             return activeGame;
           }
