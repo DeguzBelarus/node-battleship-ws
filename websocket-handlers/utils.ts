@@ -71,31 +71,28 @@ export const attackHandler = (
   y: number
 ): IAtackResult => {
   const attackedSell: SellType = shipsMatrix[y][x];
-
   if (attackedSell.startsWith('f')) {
     return { attackedSell, updatedMatrix: null, isKilled: false };
   } else {
     switch (attackedSell) {
       case 'uh':
-        const isKilledHuge =
-          shipsMatrix.flat().filter((sell) => sell === 'dh').length === HUGE_SHIP_LENGTH
-            ? true
-            : false;
         shipsMatrix[y][x] = 'dh';
+        const isKilledHuge =
+          shipsMatrix.flat().filter((sell) => sell === 'dh').length === HUGE_SHIP_LENGTH;
         return { attackedSell, updatedMatrix: shipsMatrix, isKilled: isKilledHuge };
       case 'ul':
-        const isKilledLarge =
-          shipsMatrix.flat().filter((sell) => sell === 'dl').length === LARGE_SHIP_LENGTH
-            ? true
-            : false;
         shipsMatrix[y][x] = 'dl';
+        const isKilledLarge =
+          shipsMatrix.flat().filter((sell) => sell === 'dl').length % LARGE_SHIP_LENGTH
+            ? false
+            : true;
         return { attackedSell, updatedMatrix: shipsMatrix, isKilled: isKilledLarge };
       case 'um':
-        const isKilledMedium =
-          shipsMatrix.flat().filter((sell) => sell === 'dm').length === MEDIUM_SHIP_LENGTH
-            ? true
-            : false;
         shipsMatrix[y][x] = 'dm';
+        const isKilledMedium =
+          shipsMatrix.flat().filter((sell) => sell === 'dm').length % MEDIUM_SHIP_LENGTH
+            ? false
+            : true;
         return { attackedSell, updatedMatrix: shipsMatrix, isKilled: isKilledMedium };
       case 'us':
         shipsMatrix[y][x] = 'ds';

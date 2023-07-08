@@ -210,7 +210,7 @@ class MessageHandler {
       ?.roomUsers[0] as IUserData;
     const gameGuest = this.users.find((user) => user.ws === ws) as IUserData;
     if (gameGuest.name === gameOwner.name) {
-      console.log(`${gameGuest.name}, you cannot join your own room`);
+      console.log(`${gameGuest.name}, you have already joined this room`);
       return;
     }
     const ownerGameData = new Game(this.gameCounter, gameOwner.index);
@@ -357,7 +357,7 @@ class MessageHandler {
       data.y
     );
 
-    if (attackData.attackedSell.startsWith('f')) {
+    if (attackData.attackedSell === 'free') {
       const responseData: IAttackResponse = {
         id,
         type,
@@ -385,9 +385,54 @@ class MessageHandler {
       turnResponse.data = JSON.stringify(turnResponse.data);
       attackerSocket?.send(JSON.stringify(turnResponse));
       attackRecipientSocket?.send(JSON.stringify(turnResponse));
+    } else {
+      if (!attackData.isKilled) {
+        const updatedMatrix = attackData.updatedMatrix as BattlefieldMatrixType;
+        this.activeGamesData = this.activeGamesData.map((activeGame) => {
+          if (activeGame.gameId !== data.gameId) {
+            return activeGame;
+          } else {
+            activeGame.gamePlayersData = activeGame.gamePlayersData.map((player) => {
+              if (player.indexPlayer === attackRecipient.indexPlayer) {
+                player.shipsMatrix = updatedMatrix;
+                return player;
+              } else {
+                return player;
+              }
+            });
+            return activeGame;
+          }
+        });
+
+        const responseData: IAttackResponse = {
+          id,
+          type,
+          data: {
+            currentPlayer: data.indexPlayer,
+            status: 'shot',
+            position: {
+              x: data.x,
+              y: data.y,
+            },
+          },
+        };
+        responseData.data = JSON.stringify(responseData.data);
+        attackerSocket?.send(JSON.stringify(responseData));
+        attackRecipientSocket?.send(JSON.stringify(responseData));
+
+        type = 'turn';
+        const turnResponse: ITurnResponse = {
+          id,
+          type,
+          data: {
+            currentPlayer: data.indexPlayer,
+          },
+        };
+        turnResponse.data = JSON.stringify(turnResponse.data);
+        attackerSocket?.send(JSON.stringify(turnResponse));
+        attackRecipientSocket?.send(JSON.stringify(turnResponse));
+      }
     }
-    console.log(attackData);
-    console.log(this.activeGamesData);
   }
 }
 
