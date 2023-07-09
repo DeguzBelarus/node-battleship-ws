@@ -78,8 +78,10 @@ export const attackHandler = (
   shipsMatrix: BattlefieldMatrixType,
   x: number,
   y: number
-): IAtackResult => {
+): Nullable<IAtackResult> => {
   const attackedSell: SellType = shipsMatrix[y][x];
+  if (attackedSell.startsWith('d')) return null;
+
   if (attackedSell.startsWith('f')) {
     return { attackedSell, updatedMatrix: null, isKilled: false };
   } else {

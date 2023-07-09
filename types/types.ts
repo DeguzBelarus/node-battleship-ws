@@ -160,6 +160,16 @@ export interface ITurnResponse {
   data: ITurnResponseData | string;
 }
 
+export interface IFinishResponseData {
+  winPlayer: number;
+}
+
+export interface IFinishResponse {
+  type: WebsocketMessageType;
+  id: number;
+  data: IFinishResponseData | string;
+}
+
 export interface IActiveGamePlayerData {
   ships: Array<IShipData>;
   indexPlayer: number;
@@ -170,7 +180,9 @@ export interface IActiveGamePlayerData {
 export interface IActiveGame {
   gameId: number;
   gamePlayersData: Array<IActiveGamePlayerData>;
+  currentPlayer: number;
   addPlayerKilledShips(killedShipCoords: Array<IShipPositionData>, playerIndex: number): void;
+  changeCurrentPlayer(currentPlayerIndex: number): void;
 }
 
 export interface iShipKillAttackResult {

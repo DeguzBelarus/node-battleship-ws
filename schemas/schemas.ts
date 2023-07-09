@@ -43,9 +43,15 @@ export class Game implements IGameData {
 export class ActiveGame implements IActiveGame {
   gameId: number;
   gamePlayersData: Array<IActiveGamePlayerData>;
-  constructor(gameId: number, gamePlayersData: Array<IActiveGamePlayerData>) {
+  currentPlayer: number;
+  constructor(
+    gameId: number,
+    gamePlayersData: Array<IActiveGamePlayerData>,
+    currentPlayer: number
+  ) {
     this.gameId = gameId;
     this.gamePlayersData = gamePlayersData;
+    this.currentPlayer = currentPlayer;
   }
 
   addPlayerKilledShips(killedShipCoords: Array<IShipPositionData>, playerIndex: number) {
@@ -55,6 +61,10 @@ export class ActiveGame implements IActiveGame {
       }
       return playerData;
     });
+  }
+
+  changeCurrentPlayer(currentPlayerIndex: number) {
+    this.currentPlayer = currentPlayerIndex;
   }
 }
 
