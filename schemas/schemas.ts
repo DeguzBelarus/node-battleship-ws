@@ -47,6 +47,15 @@ export class ActiveGame implements IActiveGame {
     this.gameId = gameId;
     this.gamePlayersData = gamePlayersData;
   }
+
+  addPlayerKilledShips(killedShipCoords: Array<IShipPositionData>, playerIndex: number) {
+    this.gamePlayersData.map((playerData) => {
+      if (playerData.indexPlayer === playerIndex && playerData.killedShips) {
+        playerData.killedShips = [...playerData.killedShips, ...killedShipCoords];
+      }
+      return playerData;
+    });
+  }
 }
 
 export class SellCoordinate implements IShipPositionData {

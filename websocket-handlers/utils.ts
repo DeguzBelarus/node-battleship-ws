@@ -12,6 +12,7 @@ import {
   SellType,
   IShipPositionData,
   Nullable,
+  iShipKillAttackResult,
 } from '../types/types';
 
 const freeSell: SellType = 'free';
@@ -128,9 +129,10 @@ const isInMatrix = (x: number, y: number): boolean => {
 
 export const lastShotHandler = (
   shipsMatrix: BattlefieldMatrixType,
+  playerKilledShips: Array<IShipPositionData>,
   lastShotX: number,
   lastShotY: number
-): Nullable<Array<IShipPositionData>> => {
+): Nullable<iShipKillAttackResult> => {
   try {
     const lastAttackedSell: SellType = shipsMatrix[lastShotY][lastShotX];
     const killedShipSells: Array<IShipPositionData> = [];
@@ -139,7 +141,12 @@ export const lastShotHandler = (
     shipsMatrix.forEach((sellsRow, indexY) => {
       sellsRow.forEach((sell, indexX) => {
         if (sell === lastAttackedSell) {
-          killedShipSells.push(new SellCoordinate(indexX, indexY));
+          const killedSellCandidate = new SellCoordinate(indexX, indexY);
+          const alreadyAdded = playerKilledShips.find(
+            (killedShipCoordinate) =>
+              JSON.stringify(killedShipCoordinate) === JSON.stringify(killedSellCandidate)
+          );
+          !alreadyAdded && killedShipSells.push(killedSellCandidate);
         }
       });
     });
@@ -179,9 +186,12 @@ export const lastShotHandler = (
           }
           return unique;
         }, [])
+        .filter(
+          (coordJSON) => !killedShipSells.map((sell) => JSON.stringify(sell)).includes(coordJSON)
+        )
         .map((coordJSON) => JSON.parse(coordJSON));
     });
-    return aroundShotsCoords;
+    return { aroundShotsCoords, killedShipSells };
   } catch (error) {
     if (error instanceof Error) {
       console.error(error);

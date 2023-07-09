@@ -17,6 +17,7 @@ import {
   IAttackRequestData,
   BattlefieldMatrixType,
   IAttackResponse,
+  IShipPositionData,
 } from '../types/types';
 import { User, Room, Game, ActiveGame } from '../schemas/schemas';
 import { DEFAULT_ID_VALUE, MIN_PASSWORD_LENGTH, MIN_USERNAME_LENGTH } from '../constants/constants';
@@ -259,6 +260,7 @@ class MessageHandler {
         {
           indexPlayer: data.indexPlayer,
           ships: data.ships,
+          killedShips: [],
         },
       ];
       const newActiveGame = new ActiveGame(data.gameId, gamePlayersData);
@@ -267,6 +269,7 @@ class MessageHandler {
       const secondGamePlayerData: IActiveGamePlayerData = {
         indexPlayer: data.indexPlayer,
         ships: data.ships,
+        killedShips: [],
       };
       this.activeGamesData = this.activeGamesData.map((activeGame) => {
         if (activeGame.gameId !== data.gameId) {
@@ -430,7 +433,66 @@ class MessageHandler {
         attackRecipientSocket?.send(JSON.stringify(turnResponse));
       } else {
         const updatedMatrix = attackData.updatedMatrix as BattlefieldMatrixType;
-        const aroundShotsCoords = lastShotHandler(updatedMatrix, data.x, data.y);
+        this.activeGamesData = this.activeGamesData.map((activeGame) => {
+          if (activeGame.gameId !== data.gameId) {
+            return activeGame;
+          } else {
+            activeGame.gamePlayersData = activeGame.gamePlayersData.map((player) => {
+              if (player.indexPlayer === attackRecipient.indexPlayer) {
+                player.shipsMatrix = updatedMatrix;
+              }
+              return player;
+            });
+            return activeGame;
+          }
+        });
+
+        const lastShotResults = lastShotHandler(
+          updatedMatrix,
+          attackRecipient.killedShips,
+          data.x,
+          data.y
+        );
+        lastShotResults?.killedShipSells.forEach((killedShipSellCoordinate) => {
+          const responseData: IAttackResponse = {
+            id,
+            type,
+            data: {
+              currentPlayer: data.indexPlayer,
+              status: 'killed',
+              position: {
+                x: killedShipSellCoordinate.x,
+                y: killedShipSellCoordinate.y,
+              },
+            },
+          };
+          responseData.data = JSON.stringify(responseData.data);
+          attackerSocket?.send(JSON.stringify(responseData));
+          attackRecipientSocket?.send(JSON.stringify(responseData));
+        });
+
+        currentGame?.addPlayerKilledShips(
+          lastShotResults?.killedShipSells as Array<IShipPositionData>,
+          attackRecipient.indexPlayer
+        );
+
+        lastShotResults?.aroundShotsCoords?.forEach((aroundSellCoordinate) => {
+          const responseData: IAttackResponse = {
+            id,
+            type,
+            data: {
+              currentPlayer: data.indexPlayer,
+              status: 'miss',
+              position: {
+                x: aroundSellCoordinate.x,
+                y: aroundSellCoordinate.y,
+              },
+            },
+          };
+          responseData.data = JSON.stringify(responseData.data);
+          attackerSocket?.send(JSON.stringify(responseData));
+          attackRecipientSocket?.send(JSON.stringify(responseData));
+        });
       }
     }
   }

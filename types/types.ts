@@ -164,9 +164,16 @@ export interface IActiveGamePlayerData {
   ships: Array<IShipData>;
   indexPlayer: number;
   shipsMatrix?: BattlefieldMatrixType;
+  killedShips: Array<IShipPositionData>;
 }
 
 export interface IActiveGame {
   gameId: number;
   gamePlayersData: Array<IActiveGamePlayerData>;
+  addPlayerKilledShips(killedShipCoords: Array<IShipPositionData>, playerIndex: number): void;
+}
+
+export interface iShipKillAttackResult {
+  aroundShotsCoords: Array<IShipPositionData>;
+  killedShipSells: Array<IShipPositionData>;
 }
