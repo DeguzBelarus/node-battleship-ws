@@ -4,7 +4,15 @@ import {
   LARGE_SHIP_LENGTH,
   MEDIUM_SHIP_LENGTH,
 } from '../constants/constants';
-import { BattlefieldMatrixType, IAtackResult, IShipData, SellType } from '../types/types';
+import { SellCoordinate } from '../schemas/schemas';
+import {
+  BattlefieldMatrixType,
+  IAtackResult,
+  IShipData,
+  SellType,
+  IShipPositionData,
+  Nullable,
+} from '../types/types';
 
 const freeSell: SellType = 'free';
 const isVertical = (direction: boolean) => direction;
@@ -100,5 +108,84 @@ export const attackHandler = (
       default:
         return { attackedSell, updatedMatrix: null, isKilled: false };
     }
+  }
+};
+
+const isInMatrix = (x: number, y: number): boolean => {
+  switch (true) {
+    case x < 0:
+      return false;
+    case x > BATTLEFIELD_MATRIX_SIZE - 1:
+      return false;
+    case y < 0:
+      return false;
+    case y > BATTLEFIELD_MATRIX_SIZE - 1:
+      return false;
+    default:
+      return true;
+  }
+};
+
+export const lastShotHandler = (
+  shipsMatrix: BattlefieldMatrixType,
+  lastShotX: number,
+  lastShotY: number
+): Nullable<Array<IShipPositionData>> => {
+  try {
+    const lastAttackedSell: SellType = shipsMatrix[lastShotY][lastShotX];
+    const killedShipSells: Array<IShipPositionData> = [];
+    let aroundShotsCoords: Array<IShipPositionData> = [];
+
+    shipsMatrix.forEach((sellsRow, indexY) => {
+      sellsRow.forEach((sell, indexX) => {
+        if (sell === lastAttackedSell) {
+          killedShipSells.push(new SellCoordinate(indexX, indexY));
+        }
+      });
+    });
+
+    killedShipSells.forEach((sellCoordinate) => {
+      switch (true) {
+        case shipsMatrix?.[sellCoordinate.y]?.[sellCoordinate.x - 1] === 'free':
+          isInMatrix(sellCoordinate.x - 1, sellCoordinate.y) &&
+            aroundShotsCoords.push(new SellCoordinate(sellCoordinate.x - 1, sellCoordinate.y));
+        case shipsMatrix?.[sellCoordinate.y]?.[sellCoordinate.x + 1] === 'free':
+          isInMatrix(sellCoordinate.x + 1, sellCoordinate.y) &&
+            aroundShotsCoords.push(new SellCoordinate(sellCoordinate.x + 1, sellCoordinate.y));
+        case shipsMatrix?.[sellCoordinate.y - 1]?.[sellCoordinate.x] === 'free':
+          isInMatrix(sellCoordinate.x, sellCoordinate.y - 1) &&
+            aroundShotsCoords.push(new SellCoordinate(sellCoordinate.x, sellCoordinate.y - 1));
+        case shipsMatrix?.[sellCoordinate.y + 1]?.[sellCoordinate.x] === 'free':
+          isInMatrix(sellCoordinate.x, sellCoordinate.y + 1) &&
+            aroundShotsCoords.push(new SellCoordinate(sellCoordinate.x, sellCoordinate.y + 1));
+        case shipsMatrix?.[sellCoordinate.y - 1]?.[sellCoordinate.x - 1] === 'free':
+          isInMatrix(sellCoordinate.x - 1, sellCoordinate.y - 1) &&
+            aroundShotsCoords.push(new SellCoordinate(sellCoordinate.x - 1, sellCoordinate.y - 1));
+        case shipsMatrix?.[sellCoordinate.y + 1]?.[sellCoordinate.x - 1] === 'free':
+          isInMatrix(sellCoordinate.x - 1, sellCoordinate.y + 1) &&
+            aroundShotsCoords.push(new SellCoordinate(sellCoordinate.x - 1, sellCoordinate.y + 1));
+        case shipsMatrix?.[sellCoordinate.y - 1]?.[sellCoordinate.x + 1] === 'free':
+          isInMatrix(sellCoordinate.x + 1, sellCoordinate.y - 1) &&
+            aroundShotsCoords.push(new SellCoordinate(sellCoordinate.x + 1, sellCoordinate.y - 1));
+        case shipsMatrix?.[sellCoordinate.y + 1]?.[sellCoordinate.x + 1] === 'free':
+          isInMatrix(sellCoordinate.x + 1, sellCoordinate.y + 1) &&
+            aroundShotsCoords.push(new SellCoordinate(sellCoordinate.x + 1, sellCoordinate.y + 1));
+      }
+
+      aroundShotsCoords = aroundShotsCoords
+        .reduce((unique: Array<string>, coord) => {
+          if (!unique.includes(JSON.stringify(coord))) {
+            unique = [...unique, JSON.stringify(coord)];
+          }
+          return unique;
+        }, [])
+        .map((coordJSON) => JSON.parse(coordJSON));
+    });
+    return aroundShotsCoords;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(error);
+    }
+    return null;
   }
 };

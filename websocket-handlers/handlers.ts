@@ -20,7 +20,7 @@ import {
 } from '../types/types';
 import { User, Room, Game, ActiveGame } from '../schemas/schemas';
 import { DEFAULT_ID_VALUE, MIN_PASSWORD_LENGTH, MIN_USERNAME_LENGTH } from '../constants/constants';
-import { attackHandler, battlefieldMatrixGenerator } from './utils';
+import { attackHandler, battlefieldMatrixGenerator, lastShotHandler } from './utils';
 
 class MessageHandler {
   users: Array<IUserData> = [];
@@ -428,6 +428,9 @@ class MessageHandler {
         turnResponse.data = JSON.stringify(turnResponse.data);
         attackerSocket?.send(JSON.stringify(turnResponse));
         attackRecipientSocket?.send(JSON.stringify(turnResponse));
+      } else {
+        const updatedMatrix = attackData.updatedMatrix as BattlefieldMatrixType;
+        const aroundShotsCoords = lastShotHandler(updatedMatrix, data.x, data.y);
       }
     }
   }

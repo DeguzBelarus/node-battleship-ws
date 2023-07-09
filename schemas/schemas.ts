@@ -6,6 +6,7 @@ import {
   IGameData,
   IActiveGame,
   IActiveGamePlayerData,
+  IShipPositionData,
 } from '../types/types';
 
 export class User implements IUserData {
@@ -45,5 +46,14 @@ export class ActiveGame implements IActiveGame {
   constructor(gameId: number, gamePlayersData: Array<IActiveGamePlayerData>) {
     this.gameId = gameId;
     this.gamePlayersData = gamePlayersData;
+  }
+}
+
+export class SellCoordinate implements IShipPositionData {
+  x: number;
+  y: number;
+  constructor(x: number, y: number) {
+    this.x = x;
+    this.y = y;
   }
 }

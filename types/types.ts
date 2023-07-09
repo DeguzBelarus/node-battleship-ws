@@ -90,7 +90,7 @@ export interface IAddUserToRoomRequest {
   data: IAddUserToRoomRequestData | string;
 }
 
-interface IShipPositionData {
+export interface IShipPositionData {
   x: number;
   y: number;
 }
