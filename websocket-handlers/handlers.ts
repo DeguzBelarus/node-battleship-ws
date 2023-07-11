@@ -30,7 +30,12 @@ import {
   MIN_PASSWORD_LENGTH,
   MIN_USERNAME_LENGTH,
 } from '../constants/constants';
-import { attackHandler, battlefieldMatrixGenerator, lastShotHandler } from './utils';
+import {
+  attackHandler,
+  battlefieldMatrixGenerator,
+  lastShotHandler,
+  randomAttackGenerator,
+} from './utils';
 
 class MessageHandler {
   users: Array<IUserData> = [];
@@ -658,8 +663,29 @@ class MessageHandler {
     }
   }
 
-  randomAttack(data: IRandomAttackRequestData, type: WebsocketMessageType, id: number) {
-    console.log(data);
+  randomAttack(
+    data: IRandomAttackRequestData,
+    type: WebsocketMessageType,
+    id: number,
+    websocketsServer: WebSocket.Server<typeof WebSocket, typeof IncomingMessage>
+  ) {
+    const currentGame = this.activeGamesData.find(
+      (activeGame) => activeGame.gameId === data.gameId
+    ) as IActiveGame;
+    const attackRecipientMatrix = currentGame?.gamePlayersData.filter(
+      (playerData) => playerData.indexPlayer !== data.indexPlayer
+    )[0].shipsMatrix as BattlefieldMatrixType;
+
+    const randomAttackData = randomAttackGenerator(attackRecipientMatrix);
+    type = 'attack';
+    const attackData: IAttackRequestData = {
+      x: randomAttackData.x,
+      y: randomAttackData.y,
+      gameId: currentGame.gameId,
+      indexPlayer: data.indexPlayer,
+    };
+
+    this.attack(attackData, type, id, websocketsServer);
   }
 }
 

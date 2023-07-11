@@ -201,3 +201,14 @@ export const lastShotHandler = (
     return null;
   }
 };
+
+export const randomAttackGenerator = (shipsMatrix: BattlefieldMatrixType): IShipPositionData => {
+  let randomX = Math.round(Math.random() * BATTLEFIELD_MATRIX_SIZE - 1);
+  let randomY = Math.round(Math.random() * BATTLEFIELD_MATRIX_SIZE - 1);
+
+  while (shipsMatrix[randomY][randomX].startsWith('d')) {
+    randomX = Math.round(Math.random() * BATTLEFIELD_MATRIX_SIZE - 1);
+    randomY = Math.round(Math.random() * BATTLEFIELD_MATRIX_SIZE - 1);
+  }
+  return { x: randomX, y: randomY };
+};
