@@ -139,6 +139,17 @@ export interface IAttackResponse {
   data: IAttackResponseData | string;
 }
 
+export interface IRandomAttackRequestData {
+  gameId: number;
+  indexPlayer: number;
+}
+
+export interface IRandomAttackRequest {
+  type: WebsocketMessageType;
+  id: number;
+  data: IRandomAttackRequestData | string;
+}
+
 export interface IStartGameResponseData {
   ships: Array<IShipData>;
   currentPlayerIndex: number;
@@ -188,4 +199,15 @@ export interface IActiveGame {
 export interface iShipKillAttackResult {
   aroundShotsCoords: Array<IShipPositionData>;
   killedShipSells: Array<IShipPositionData>;
+}
+
+export interface IWinnerData {
+  name: string;
+  wins: number;
+}
+
+export interface IWinnersResponse {
+  type: WebsocketMessageType;
+  id: number;
+  data: Array<IWinnerData> | string;
 }

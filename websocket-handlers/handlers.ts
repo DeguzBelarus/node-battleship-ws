@@ -19,8 +19,11 @@ import {
   IAttackResponse,
   IShipPositionData,
   IFinishResponse,
+  IRandomAttackRequestData,
+  IWinnerData,
+  IWinnersResponse,
 } from '../types/types';
-import { User, Room, Game, ActiveGame } from '../schemas/schemas';
+import { User, Room, Game, ActiveGame, Winner } from '../schemas/schemas';
 import {
   DEFAULT_ID_VALUE,
   KILLED_SHIPS_SELLS_COUNT,
@@ -31,6 +34,7 @@ import { attackHandler, battlefieldMatrixGenerator, lastShotHandler } from './ut
 
 class MessageHandler {
   users: Array<IUserData> = [];
+  winners: Array<IWinnerData> = [];
   roomsData: Array<IUsersRoom> = [];
   playersData: Array<IGameData> = [];
   activeGamesData: Array<IActiveGame> = [];
@@ -70,7 +74,7 @@ class MessageHandler {
       activeGame.gamePlayersData.some(
         (playerData) => playerData.indexPlayer === disconnectedUser?.index
       )
-    );
+    ) as IActiveGame;
     const oppositePlayer = userGame?.gamePlayersData.filter(
       (player) => player.indexPlayer !== disconnectedUser?.index
     )[0] as IActiveGamePlayerData;
@@ -87,6 +91,41 @@ class MessageHandler {
     };
     finishResponse.data = JSON.stringify(finishResponse.data);
     oppositePlayerData.ws?.send(JSON.stringify(finishResponse));
+
+    this.activeGamesData = this.activeGamesData.filter(
+      (activeGame) => activeGame.gameId !== userGame.gameId
+    );
+
+    const foundWinner = this.winners.find((winner) => winner.name === oppositePlayerData.name);
+    if (!foundWinner) {
+      const newWinner = new Winner(oppositePlayerData.name, 1);
+      this.winners = [...this.winners, newWinner];
+    } else {
+      this.winners = this.winners.map((winner) => {
+        if (winner.name === foundWinner.name) {
+          winner.wins += 1;
+        }
+        return winner;
+      });
+    }
+
+    const winnersResponse: IWinnersResponse = {
+      id,
+      type: 'update_winners',
+      data: this.winners,
+    };
+    winnersResponse.data = JSON.stringify(winnersResponse.data);
+    oppositePlayerData.ws?.send(JSON.stringify(winnersResponse));
+
+    websocketsServer.clients.forEach((client) => {
+      if (
+        client !== oppositePlayerData.ws &&
+        client !== ws &&
+        client.readyState === WebSocket.OPEN
+      ) {
+        client.send(JSON.stringify(winnersResponse));
+      }
+    });
   }
 
   getRoomsData(id: number) {
@@ -176,6 +215,14 @@ class MessageHandler {
         this.usersLoggedIn.push(existedUser.name);
         console.log(`${existedUser.name} has logged in`);
         console.log(`users online: ${this.usersLoggedIn}`);
+
+        const winnersResponse: IWinnersResponse = {
+          id,
+          type: 'update_winners',
+          data: this.winners,
+        };
+        winnersResponse.data = JSON.stringify(winnersResponse.data);
+        ws.send(JSON.stringify(winnersResponse));
       } else {
         ws.send(
           JSON.stringify({
@@ -210,6 +257,14 @@ class MessageHandler {
     this.usersLoggedIn.push(newUser.name);
     console.log(`${newUser.name} has logged in`);
     console.log(`users online: ${this.usersLoggedIn}`);
+
+    const winnersResponse: IWinnersResponse = {
+      id,
+      type: 'update_winners',
+      data: this.winners,
+    };
+    winnersResponse.data = JSON.stringify(winnersResponse.data);
+    ws.send(JSON.stringify(winnersResponse));
   }
 
   createRoom(type: WebsocketMessageType, id: number, ws: WebSocket): ICreateRoomResponse {
@@ -369,7 +424,12 @@ class MessageHandler {
     }
   }
 
-  attack(data: IAttackRequestData, type: WebsocketMessageType, id: number) {
+  attack(
+    data: IAttackRequestData,
+    type: WebsocketMessageType,
+    id: number,
+    websocketsServer: WebSocket.Server<typeof WebSocket, typeof IncomingMessage>
+  ) {
     const currentGame = this.activeGamesData.find(
       (activeGame) => activeGame.gameId === data.gameId
     );
@@ -544,6 +604,43 @@ class MessageHandler {
           this.activeGamesData = this.activeGamesData.filter(
             (activeGame) => activeGame.gameId !== currentGame.gameId
           );
+
+          const attackerData = this.users.find(
+            (user) => user.index === data.indexPlayer
+          ) as IUserData;
+          const foundWinner = this.winners.find((winner) => winner.name === attackerData.name);
+
+          if (!foundWinner) {
+            const newWinner = new Winner(attackerData.name, 1);
+            this.winners = [...this.winners, newWinner];
+          } else {
+            this.winners = this.winners.map((winner) => {
+              if (winner.name === foundWinner.name) {
+                winner.wins += 1;
+              }
+              return winner;
+            });
+          }
+
+          type = 'update_winners';
+          const winnersResponse: IWinnersResponse = {
+            id,
+            type,
+            data: this.winners,
+          };
+          winnersResponse.data = JSON.stringify(winnersResponse.data);
+          attackerSocket?.send(JSON.stringify(winnersResponse));
+          attackRecipientSocket?.send(JSON.stringify(winnersResponse));
+
+          websocketsServer.clients.forEach((client) => {
+            if (
+              client !== attackerSocket &&
+              client !== attackRecipientSocket &&
+              client.readyState === WebSocket.OPEN
+            ) {
+              client.send(JSON.stringify(winnersResponse));
+            }
+          });
         } else {
           type = 'turn';
           const turnResponse: ITurnResponse = {
@@ -559,6 +656,10 @@ class MessageHandler {
         }
       }
     }
+  }
+
+  randomAttack(data: IRandomAttackRequestData, type: WebsocketMessageType, id: number) {
+    console.log(data);
   }
 }
 

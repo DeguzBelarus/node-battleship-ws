@@ -4,6 +4,7 @@ import {
   IAddUserShipsRequestData,
   IAddUserToRoomRequestData,
   IAttackRequestData,
+  IRandomAttackRequestData,
   IRegistrationRequestData,
   IWebsocketMessage,
 } from '../types/types';
@@ -72,10 +73,14 @@ websocketsServer.on('connection', function connection(ws) {
           break;
         case 'attack':
           const attackData = JSON.parse(messageData.data as string) as IAttackRequestData;
-          messageHandler.attack(attackData, messageData.type, messageData.id);
+          messageHandler.attack(attackData, messageData.type, messageData.id, websocketsServer);
           break;
         case 'randomAttack':
           console.log('randomAttack');
+          const randomAttackData = JSON.parse(
+            messageData.data as string
+          ) as IRandomAttackRequestData;
+          messageHandler.randomAttack(randomAttackData, messageData.type, messageData.id);
           break;
       }
     } catch (error) {
