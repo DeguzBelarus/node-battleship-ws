@@ -186,12 +186,15 @@ export interface IActiveGamePlayerData {
   indexPlayer: number;
   shipsMatrix?: BattlefieldMatrixType;
   killedShips: Array<IShipPositionData>;
+  updateShipsMatrix(shipsMatrix: BattlefieldMatrixType): void;
+  updateKilledShips(killedShips: Array<IShipPositionData>): void;
 }
 
 export interface IActiveGame {
   gameId: number;
   gamePlayersData: Array<IActiveGamePlayerData>;
   currentPlayer: number;
+  addNewUser(newUser: IActiveGamePlayerData): void;
   addPlayerKilledShips(killedShipCoords: Array<IShipPositionData>, playerIndex: number): void;
   changeCurrentPlayer(currentPlayerIndex: number): void;
 }

@@ -8,6 +8,8 @@ import {
   IActiveGamePlayerData,
   IShipPositionData,
   IWinnerData,
+  IShipData,
+  BattlefieldMatrixType,
 } from '../types/types';
 
 export class User implements IUserData {
@@ -41,6 +43,32 @@ export class Game implements IGameData {
   }
 }
 
+export class ActiveGamePlayer implements IActiveGamePlayerData {
+  ships: Array<IShipData>;
+  indexPlayer: number;
+  shipsMatrix?: BattlefieldMatrixType;
+  killedShips: Array<IShipPositionData>;
+  constructor(
+    ships: Array<IShipData>,
+    indexPlayer: number,
+    killedShips: Array<IShipPositionData>,
+    shipsMatrix?: BattlefieldMatrixType
+  ) {
+    this.ships = ships;
+    this.indexPlayer = indexPlayer;
+    this.killedShips = killedShips;
+    this.shipsMatrix = shipsMatrix;
+  }
+
+  updateShipsMatrix(shipsMatrix: BattlefieldMatrixType) {
+    this.shipsMatrix = shipsMatrix;
+  }
+
+  updateKilledShips(killedShips: Array<IShipPositionData>) {
+    this.killedShips = killedShips;
+  }
+}
+
 export class ActiveGame implements IActiveGame {
   gameId: number;
   gamePlayersData: Array<IActiveGamePlayerData>;
@@ -53,6 +81,10 @@ export class ActiveGame implements IActiveGame {
     this.gameId = gameId;
     this.gamePlayersData = gamePlayersData;
     this.currentPlayer = currentPlayer;
+  }
+
+  addNewUser(newUser: IActiveGamePlayerData) {
+    this.gamePlayersData = [...this.gamePlayersData, newUser];
   }
 
   addPlayerKilledShips(killedShipCoords: Array<IShipPositionData>, playerIndex: number) {

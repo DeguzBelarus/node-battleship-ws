@@ -23,7 +23,7 @@ import {
   IWinnerData,
   IWinnersResponse,
 } from '../types/types';
-import { User, Room, Game, ActiveGame, Winner } from '../schemas/schemas';
+import { User, Room, Game, ActiveGame, Winner, ActiveGamePlayer } from '../schemas/schemas';
 import {
   DEFAULT_ID_VALUE,
   KILLED_SHIPS_SELLS_COUNT,
@@ -341,30 +341,13 @@ class MessageHandler {
     );
 
     if (!foundActiveGame) {
-      const gamePlayersData: Array<IActiveGamePlayerData> = [
-        {
-          indexPlayer: data.indexPlayer,
-          ships: data.ships,
-          killedShips: [],
-        },
-      ];
-      const newActiveGame = new ActiveGame(data.gameId, gamePlayersData, data.indexPlayer);
+      const gameOwner = new ActiveGamePlayer(data.ships, data.indexPlayer, []);
+      const newActiveGame = new ActiveGame(data.gameId, [], data.indexPlayer);
+      newActiveGame.addNewUser(gameOwner);
       this.activeGamesData = [...this.activeGamesData, newActiveGame];
     } else {
-      const secondGamePlayerData: IActiveGamePlayerData = {
-        indexPlayer: data.indexPlayer,
-        ships: data.ships,
-        killedShips: [],
-      };
-
-      this.activeGamesData = this.activeGamesData.map((activeGame) => {
-        if (activeGame.gameId !== data.gameId) {
-          return activeGame;
-        } else {
-          activeGame.gamePlayersData = [...activeGame.gamePlayersData, secondGamePlayerData];
-          return activeGame;
-        }
-      });
+      const secondGamePlayerData = new ActiveGamePlayer(data.ships, data.indexPlayer, []);
+      foundActiveGame.addNewUser(secondGamePlayerData);
       const firstPlayer = this.users.find(
         (user) => user.index === foundActiveGame.gamePlayersData[0].indexPlayer
       ) as IUserData;
