@@ -204,6 +204,7 @@ export interface iShipKillAttackResult {
 export interface IWinnerData {
   name: string;
   wins: number;
+  addOneWin(): void;
 }
 
 export interface IWinnersResponse {

@@ -85,4 +85,8 @@ export class Winner implements IWinnerData {
     this.name = name;
     this.wins = wins;
   }
+
+  addOneWin() {
+    this.wins += 1;
+  }
 }

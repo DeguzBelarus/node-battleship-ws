@@ -79,58 +79,55 @@ class MessageHandler {
       activeGame.gamePlayersData.some(
         (playerData) => playerData.indexPlayer === disconnectedUser?.index
       )
-    ) as IActiveGame;
+    );
     const oppositePlayer = userGame?.gamePlayersData.filter(
       (player) => player.indexPlayer !== disconnectedUser?.index
-    )[0] as IActiveGamePlayerData;
-    const oppositePlayerData = this.users.find(
-      (user) => user.index === oppositePlayer.indexPlayer
-    ) as IUserData;
+    )[0];
 
-    const finishResponse: IFinishResponse = {
-      id,
-      type: 'finish',
-      data: {
-        winPlayer: oppositePlayer.indexPlayer,
-      },
-    };
-    finishResponse.data = JSON.stringify(finishResponse.data);
-    oppositePlayerData.ws?.send(JSON.stringify(finishResponse));
+    if (oppositePlayer) {
+      const oppositePlayerData = this.users?.find(
+        (user) => user.index === oppositePlayer.indexPlayer
+      ) as IUserData;
+      const finishResponse: IFinishResponse = {
+        id,
+        type: 'finish',
+        data: {
+          winPlayer: oppositePlayer.indexPlayer,
+        },
+      };
+      finishResponse.data = JSON.stringify(finishResponse.data);
+      oppositePlayerData.ws?.send(JSON.stringify(finishResponse));
 
-    this.activeGamesData = this.activeGamesData.filter(
-      (activeGame) => activeGame.gameId !== userGame.gameId
-    );
+      this.activeGamesData = this.activeGamesData.filter(
+        (activeGame) => activeGame.gameId !== userGame.gameId
+      );
 
-    const foundWinner = this.winners.find((winner) => winner.name === oppositePlayerData.name);
-    if (!foundWinner) {
-      const newWinner = new Winner(oppositePlayerData.name, 1);
-      this.winners = [...this.winners, newWinner];
-    } else {
-      this.winners = this.winners.map((winner) => {
-        if (winner.name === foundWinner.name) {
-          winner.wins += 1;
+      const foundWinner = this.winners.find((winner) => winner.name === oppositePlayerData.name);
+      if (!foundWinner) {
+        const newWinner = new Winner(oppositePlayerData.name, 1);
+        this.winners = [...this.winners, newWinner];
+      } else {
+        foundWinner.addOneWin();
+      }
+
+      const winnersResponse: IWinnersResponse = {
+        id,
+        type: 'update_winners',
+        data: this.winners,
+      };
+      winnersResponse.data = JSON.stringify(winnersResponse.data);
+      oppositePlayerData.ws?.send(JSON.stringify(winnersResponse));
+
+      websocketsServer.clients.forEach((client) => {
+        if (
+          client !== oppositePlayerData.ws &&
+          client !== ws &&
+          client.readyState === WebSocket.OPEN
+        ) {
+          client.send(JSON.stringify(winnersResponse));
         }
-        return winner;
       });
     }
-
-    const winnersResponse: IWinnersResponse = {
-      id,
-      type: 'update_winners',
-      data: this.winners,
-    };
-    winnersResponse.data = JSON.stringify(winnersResponse.data);
-    oppositePlayerData.ws?.send(JSON.stringify(winnersResponse));
-
-    websocketsServer.clients.forEach((client) => {
-      if (
-        client !== oppositePlayerData.ws &&
-        client !== ws &&
-        client.readyState === WebSocket.OPEN
-      ) {
-        client.send(JSON.stringify(winnersResponse));
-      }
-    });
   }
 
   getRoomsData(id: number) {
@@ -619,12 +616,7 @@ class MessageHandler {
             const newWinner = new Winner(attackerData.name, 1);
             this.winners = [...this.winners, newWinner];
           } else {
-            this.winners = this.winners.map((winner) => {
-              if (winner.name === foundWinner.name) {
-                winner.wins += 1;
-              }
-              return winner;
-            });
+            foundWinner.addOneWin();
           }
 
           type = 'update_winners';
