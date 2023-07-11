@@ -20,7 +20,7 @@ import {
   IShipPositionData,
   IFinishResponse,
 } from '../types/types';
-import { User, Room, Game, ActiveGame, SellCoordinate } from '../schemas/schemas';
+import { User, Room, Game, ActiveGame } from '../schemas/schemas';
 import {
   DEFAULT_ID_VALUE,
   KILLED_SHIPS_SELLS_COUNT,
@@ -65,6 +65,28 @@ class MessageHandler {
         client.send(roomsData);
       }
     });
+
+    const userGame = this.activeGamesData.find((activeGame) =>
+      activeGame.gamePlayersData.some(
+        (playerData) => playerData.indexPlayer === disconnectedUser?.index
+      )
+    );
+    const oppositePlayer = userGame?.gamePlayersData.filter(
+      (player) => player.indexPlayer !== disconnectedUser?.index
+    )[0] as IActiveGamePlayerData;
+    const oppositePlayerData = this.users.find(
+      (user) => user.index === oppositePlayer.indexPlayer
+    ) as IUserData;
+
+    const finishResponse: IFinishResponse = {
+      id,
+      type: 'finish',
+      data: {
+        winPlayer: oppositePlayer.indexPlayer,
+      },
+    };
+    finishResponse.data = JSON.stringify(finishResponse.data);
+    oppositePlayerData.ws?.send(JSON.stringify(finishResponse));
   }
 
   getRoomsData(id: number) {
