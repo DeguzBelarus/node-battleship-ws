@@ -21,11 +21,13 @@ export type WebsocketMessageType =
   | 'attack'
   | 'randomAttack'
   | 'turn'
-  | 'finish';
+  | 'finish'
+  | 'single_play';
 export type ShipType = 'small' | 'medium' | 'large' | 'huge';
 export type SellType = 'free' | 'uh' | 'ul' | 'um' | 'us' | 'dh' | 'dl' | 'dm' | 'ds';
 export type BattlefieldMatrixType = Array<Array<SellType>>;
 export type AttackResultType = 'miss' | 'killed' | 'shot';
+export type EmptyStringType = '';
 
 export interface IAtackResult {
   attackedSell: SellType;
@@ -112,6 +114,12 @@ export interface IAddUserShipsRequest {
   type: WebsocketMessageType;
   id: number;
   data: IAddUserShipsRequestData | string;
+}
+
+export interface ISinglePlayRequest {
+  type: WebsocketMessageType;
+  id: number;
+  data: EmptyStringType;
 }
 
 export interface IAttackRequestData {

@@ -33,6 +33,7 @@ import {
 import {
   attackHandler,
   battlefieldMatrixGenerator,
+  botShipsGenerator,
   lastShotHandler,
   randomAttackGenerator,
 } from './utils';
@@ -43,9 +44,11 @@ class MessageHandler {
   roomsData: Array<IUsersRoom> = [];
   playersData: Array<IGameData> = [];
   activeGamesData: Array<IActiveGame> = [];
+  activeSingleGamesData: Array<IActiveGame> = [];
   usersLoggedIn: Array<string> = [];
   roomCounter = 0;
   gameCounter = 0;
+  botsCounter = 0;
 
   clearDisconnectedUserRooms(
     ws: WebSocket,
@@ -75,58 +78,70 @@ class MessageHandler {
       }
     });
 
-    const userGame = this.activeGamesData.find((activeGame) =>
-      activeGame.gamePlayersData.some(
-        (playerData) => playerData.indexPlayer === disconnectedUser?.index
+    const userSingleGame = this.activeSingleGamesData.find((activeSingleGame) =>
+      activeSingleGame.gamePlayersData.some(
+        (singlePlayerData) => singlePlayerData.indexPlayer === disconnectedUser?.index
       )
     );
-    const oppositePlayer = userGame?.gamePlayersData.filter(
-      (player) => player.indexPlayer !== disconnectedUser?.index
-    )[0];
 
-    if (oppositePlayer) {
-      const oppositePlayerData = this.users?.find(
-        (user) => user.index === oppositePlayer.indexPlayer
-      ) as IUserData;
-      const finishResponse: IFinishResponse = {
-        id,
-        type: 'finish',
-        data: {
-          winPlayer: oppositePlayer.indexPlayer,
-        },
-      };
-      finishResponse.data = JSON.stringify(finishResponse.data);
-      oppositePlayerData.ws?.send(JSON.stringify(finishResponse));
-
-      this.activeGamesData = this.activeGamesData.filter(
-        (activeGame) => activeGame.gameId !== userGame.gameId
+    if (userSingleGame) {
+      this.activeSingleGamesData = this.activeSingleGamesData.filter(
+        (activeSingleGame) => activeSingleGame.gameId !== userSingleGame.gameId
       );
+    } else {
+      const userGame = this.activeGamesData.find((activeGame) =>
+        activeGame.gamePlayersData.some(
+          (playerData) => playerData.indexPlayer === disconnectedUser?.index
+        )
+      );
+      const oppositePlayer = userGame?.gamePlayersData.filter(
+        (player) => player.indexPlayer !== disconnectedUser?.index
+      )[0];
 
-      const foundWinner = this.winners.find((winner) => winner.name === oppositePlayerData.name);
-      if (!foundWinner) {
-        const newWinner = new Winner(oppositePlayerData.name, 1);
-        this.winners = [...this.winners, newWinner];
-      } else {
-        foundWinner.addOneWin();
-      }
+      if (oppositePlayer) {
+        const oppositePlayerData = this.users?.find(
+          (user) => user.index === oppositePlayer.indexPlayer
+        ) as IUserData;
+        const finishResponse: IFinishResponse = {
+          id,
+          type: 'finish',
+          data: {
+            winPlayer: oppositePlayer.indexPlayer,
+          },
+        };
+        finishResponse.data = JSON.stringify(finishResponse.data);
+        oppositePlayerData.ws?.send(JSON.stringify(finishResponse));
 
-      const winnersResponse: IWinnersResponse = {
-        id,
-        type: 'update_winners',
-        data: this.winners,
-      };
-      winnersResponse.data = JSON.stringify(winnersResponse.data);
-      oppositePlayerData.ws?.send(JSON.stringify(winnersResponse));
+        this.activeGamesData = this.activeGamesData.filter(
+          (activeGame) => activeGame.gameId !== userGame.gameId
+        );
 
-      websocketsServer.clients.forEach((client) => {
-        if (
-          client !== oppositePlayerData.ws &&
-          client !== ws &&
-          client.readyState === WebSocket.OPEN
-        ) {
-          client.send(JSON.stringify(winnersResponse));
+        const foundWinner = this.winners.find((winner) => winner.name === oppositePlayerData.name);
+        if (!foundWinner) {
+          const newWinner = new Winner(oppositePlayerData.name, 1);
+          this.winners = [...this.winners, newWinner];
+        } else {
+          foundWinner.addOneWin();
         }
-      });
+
+        const winnersResponse: IWinnersResponse = {
+          id,
+          type: 'update_winners',
+          data: this.winners,
+        };
+        winnersResponse.data = JSON.stringify(winnersResponse.data);
+        oppositePlayerData.ws?.send(JSON.stringify(winnersResponse));
+
+        websocketsServer.clients.forEach((client) => {
+          if (
+            client !== oppositePlayerData.ws &&
+            client !== ws &&
+            client.readyState === WebSocket.OPEN
+          ) {
+            client.send(JSON.stringify(winnersResponse));
+          }
+        });
+      }
     }
   }
 
@@ -334,78 +349,134 @@ class MessageHandler {
     });
   }
 
-  addUserShips(data: IAddUserShipsRequestData, type: WebsocketMessageType, id: number) {
+  addUserShips(
+    data: IAddUserShipsRequestData,
+    type: WebsocketMessageType,
+    id: number,
+    websocketsServer: WebSocket.Server<typeof WebSocket, typeof IncomingMessage>
+  ) {
     type = 'start_game';
     const foundActiveGame = this.activeGamesData.find(
       (activeGame) => activeGame.gameId === data.gameId
     );
+    const foundActiveSingleGame = this.activeSingleGamesData.find(
+      (activeSingleGame) => activeSingleGame.gameId === data.gameId
+    );
 
-    if (!foundActiveGame) {
-      const gameOwner = new ActiveGamePlayer(data.ships, data.indexPlayer, []);
-      const newActiveGame = new ActiveGame(data.gameId, [], data.indexPlayer);
-      newActiveGame.addNewUser(gameOwner);
-      this.activeGamesData = [...this.activeGamesData, newActiveGame];
-    } else {
-      const secondGamePlayerData = new ActiveGamePlayer(data.ships, data.indexPlayer, []);
-      foundActiveGame.addNewUser(secondGamePlayerData);
-      const firstPlayer = this.users.find(
-        (user) => user.index === foundActiveGame.gamePlayersData[0].indexPlayer
-      ) as IUserData;
-      const secondPlayer = this.users.find(
-        (user) => user.index === foundActiveGame.gamePlayersData[1].indexPlayer
-      ) as IUserData;
-      const currentPlayerIndex = Math.random() * 1 <= 0.5 ? firstPlayer.index : secondPlayer.index;
-      foundActiveGame.changeCurrentPlayer(currentPlayerIndex);
+    if (foundActiveSingleGame) {
+      const humanPlayerData = new ActiveGamePlayer(data.ships, data.indexPlayer, []);
+      foundActiveSingleGame.addNewUser(humanPlayerData);
+      const botPlayer = foundActiveSingleGame.gamePlayersData[0];
+      const currentPlayerIndex =
+        Math.random() * 1 <= 0.5 ? botPlayer.indexPlayer : humanPlayerData.indexPlayer;
+      foundActiveSingleGame.changeCurrentPlayer(currentPlayerIndex);
 
-      const firstPlayerResponse: IStartGameResponse = {
+      const humanPlayerSocket = this.users.find(
+        (user) => user.index === humanPlayerData.indexPlayer
+      )?.ws as WebSocket;
+      const humanPlayerResponse: IStartGameResponse = {
         id,
         type,
         data: {
-          currentPlayerIndex: foundActiveGame.currentPlayer,
-          ships: foundActiveGame.gamePlayersData[0].ships,
+          currentPlayerIndex: foundActiveSingleGame.currentPlayer,
+          ships: foundActiveSingleGame.gamePlayersData[1].ships,
         },
       };
-      firstPlayerResponse.data = JSON.stringify(firstPlayerResponse.data);
-      const secondPlayerResponse: IStartGameResponse = {
-        id,
-        type,
-        data: {
-          currentPlayerIndex: foundActiveGame.currentPlayer,
-          ships: foundActiveGame.gamePlayersData[1].ships,
-        },
-      };
-      secondPlayerResponse.data = JSON.stringify(secondPlayerResponse.data);
-      firstPlayer.ws?.send(JSON.stringify(firstPlayerResponse));
-      secondPlayer.ws?.send(JSON.stringify(firstPlayerResponse));
+      humanPlayerResponse.data = JSON.stringify(humanPlayerResponse.data);
+      humanPlayerSocket.send(JSON.stringify(humanPlayerResponse));
 
-      const firstPlayerBattlefield = battlefieldMatrixGenerator(
-        foundActiveGame.gamePlayersData[0].ships
+      const botPlayerBattlefield = battlefieldMatrixGenerator(
+        foundActiveSingleGame.gamePlayersData[0].ships
       );
-      const secondPlayerBattlefield = battlefieldMatrixGenerator(
-        foundActiveGame.gamePlayersData[1].ships
+      const humanPlayerBattlefield = battlefieldMatrixGenerator(
+        foundActiveSingleGame.gamePlayersData[1].ships
       );
-      this.activeGamesData = this.activeGamesData.map((activeGame) => {
-        if (activeGame.gameId !== data.gameId) {
-          return activeGame;
-        } else {
-          activeGame.gamePlayersData[0].shipsMatrix = firstPlayerBattlefield;
-          activeGame.gamePlayersData[1].shipsMatrix = secondPlayerBattlefield;
-          return activeGame;
-        }
-      });
+      botPlayer.updateShipsMatrix(botPlayerBattlefield);
+      humanPlayerData.updateShipsMatrix(humanPlayerBattlefield);
 
       type = 'turn';
       const turnResponse: ITurnResponse = {
         id,
         type,
         data: {
-          currentPlayer: foundActiveGame.currentPlayer,
+          currentPlayer: foundActiveSingleGame.currentPlayer,
         },
       };
       turnResponse.data = JSON.stringify(turnResponse.data);
+      humanPlayerSocket.send(JSON.stringify(turnResponse));
 
-      firstPlayer.ws?.send(JSON.stringify(turnResponse));
-      secondPlayer.ws?.send(JSON.stringify(turnResponse));
+      if (foundActiveSingleGame.currentPlayer === botPlayer.indexPlayer) {
+        const randomAttackData = randomAttackGenerator(humanPlayerBattlefield);
+        type = 'attack';
+        const attackData: IAttackRequestData = {
+          x: randomAttackData.x,
+          y: randomAttackData.y,
+          gameId: foundActiveSingleGame.gameId,
+          indexPlayer: botPlayer.indexPlayer,
+        };
+        this.attack(attackData, type, id, websocketsServer);
+      }
+    } else {
+      if (!foundActiveGame) {
+        const gameOwner = new ActiveGamePlayer(data.ships, data.indexPlayer, []);
+        const newActiveGame = new ActiveGame(data.gameId, [], data.indexPlayer);
+        newActiveGame.addNewUser(gameOwner);
+        this.activeGamesData = [...this.activeGamesData, newActiveGame];
+      } else {
+        const secondGamePlayerData = new ActiveGamePlayer(data.ships, data.indexPlayer, []);
+        foundActiveGame.addNewUser(secondGamePlayerData);
+        const firstPlayer = this.users.find(
+          (user) => user.index === foundActiveGame.gamePlayersData[0].indexPlayer
+        ) as IUserData;
+        const secondPlayer = this.users.find(
+          (user) => user.index === foundActiveGame.gamePlayersData[1].indexPlayer
+        ) as IUserData;
+        const currentPlayerIndex =
+          Math.random() * 1 <= 0.5 ? firstPlayer.index : secondPlayer.index;
+        foundActiveGame.changeCurrentPlayer(currentPlayerIndex);
+
+        const firstPlayerResponse: IStartGameResponse = {
+          id,
+          type,
+          data: {
+            currentPlayerIndex: foundActiveGame.currentPlayer,
+            ships: foundActiveGame.gamePlayersData[0].ships,
+          },
+        };
+        firstPlayerResponse.data = JSON.stringify(firstPlayerResponse.data);
+        const secondPlayerResponse: IStartGameResponse = {
+          id,
+          type,
+          data: {
+            currentPlayerIndex: foundActiveGame.currentPlayer,
+            ships: foundActiveGame.gamePlayersData[1].ships,
+          },
+        };
+        secondPlayerResponse.data = JSON.stringify(secondPlayerResponse.data);
+        firstPlayer.ws?.send(JSON.stringify(firstPlayerResponse));
+        secondPlayer.ws?.send(JSON.stringify(firstPlayerResponse));
+
+        const firstPlayerBattlefield = battlefieldMatrixGenerator(
+          foundActiveGame.gamePlayersData[0].ships
+        );
+        const secondPlayerBattlefield = battlefieldMatrixGenerator(
+          foundActiveGame.gamePlayersData[1].ships
+        );
+        foundActiveGame.gamePlayersData[0].updateShipsMatrix(firstPlayerBattlefield);
+        foundActiveGame.gamePlayersData[1].updateShipsMatrix(secondPlayerBattlefield);
+
+        type = 'turn';
+        const turnResponse: ITurnResponse = {
+          id,
+          type,
+          data: {
+            currentPlayer: foundActiveGame.currentPlayer,
+          },
+        };
+        turnResponse.data = JSON.stringify(turnResponse.data);
+        firstPlayer.ws?.send(JSON.stringify(turnResponse));
+        secondPlayer.ws?.send(JSON.stringify(turnResponse));
+      }
     }
   }
 
@@ -415,78 +486,60 @@ class MessageHandler {
     id: number,
     websocketsServer: WebSocket.Server<typeof WebSocket, typeof IncomingMessage>
   ) {
-    const currentGame = this.activeGamesData.find(
-      (activeGame) => activeGame.gameId === data.gameId
-    );
-    if (data.indexPlayer !== currentGame?.currentPlayer) return;
+    try {
+      let currentGame = this.activeGamesData.find(
+        (activeGame) => activeGame.gameId === data.gameId
+      );
+      if (currentGame && data.indexPlayer !== currentGame?.currentPlayer) return;
 
-    const attackRecipient = currentGame?.gamePlayersData.filter(
-      (playerData) => playerData.indexPlayer !== data.indexPlayer
-    )[0] as IActiveGamePlayerData;
-    const attackRecipientSocket = this.users.find(
-      (user) => user.index === attackRecipient.indexPlayer
-    )?.ws;
-    const attackerSocket = this.users.find((user) => user.index === data.indexPlayer)?.ws;
+      const currentSingleGame = this.activeSingleGamesData.find(
+        (activeSingleGame) => activeSingleGame.gameId === data.gameId
+      );
+      if (currentSingleGame && data.indexPlayer !== currentSingleGame?.currentPlayer) return;
 
-    const attackData = attackHandler(
-      attackRecipient.shipsMatrix as BattlefieldMatrixType,
-      data.x,
-      data.y
-    );
-    if (!attackData) return;
+      currentGame = currentSingleGame ? currentSingleGame : currentGame;
 
-    if (attackData.attackedSell === 'free') {
-      const responseData: IAttackResponse = {
-        id,
-        type,
-        data: {
-          currentPlayer: data.indexPlayer,
-          status: 'miss',
-          position: {
-            x: data.x,
-            y: data.y,
-          },
-        },
-      };
-      responseData.data = JSON.stringify(responseData.data);
-      attackerSocket?.send(JSON.stringify(responseData));
-      attackRecipientSocket?.send(JSON.stringify(responseData));
+      const attackRecipient = currentGame?.gamePlayersData.filter(
+        (playerData) => playerData.indexPlayer !== data.indexPlayer
+      )[0] as IActiveGamePlayerData;
+      const attacker = currentGame?.gamePlayersData.filter(
+        (playerData) => playerData.indexPlayer === data.indexPlayer
+      )[0] as IActiveGamePlayerData;
 
-      currentGame.changeCurrentPlayer(attackRecipient.indexPlayer);
-      type = 'turn';
-      const turnResponse: ITurnResponse = {
-        id,
-        type,
-        data: {
-          currentPlayer: currentGame.currentPlayer,
-        },
-      };
-      turnResponse.data = JSON.stringify(turnResponse.data);
-      attackerSocket?.send(JSON.stringify(turnResponse));
-      attackRecipientSocket?.send(JSON.stringify(turnResponse));
-    } else {
-      if (!attackData.isKilled) {
-        const updatedMatrix = attackData.updatedMatrix as BattlefieldMatrixType;
-        this.activeGamesData = this.activeGamesData.map((activeGame) => {
-          if (activeGame.gameId !== data.gameId) {
-            return activeGame;
-          } else {
-            activeGame.gamePlayersData = activeGame.gamePlayersData.map((player) => {
-              if (player.indexPlayer === attackRecipient.indexPlayer) {
-                player.shipsMatrix = updatedMatrix;
-              }
-              return player;
-            });
-            return activeGame;
-          }
-        });
+      const isAttackRecipientBot =
+        currentSingleGame &&
+        currentSingleGame.gamePlayersData.findIndex(
+          (singlePlayer) => singlePlayer.indexPlayer !== data.indexPlayer
+        ) === 0
+          ? true
+          : false;
+      const isAttackRecipientHuman =
+        currentSingleGame &&
+        currentSingleGame.gamePlayersData.findIndex(
+          (singlePlayer) => singlePlayer.indexPlayer !== data.indexPlayer
+        ) === 1
+          ? true
+          : false;
 
+      const attackRecipientSocket = this.users.find(
+        (user) => user.index === attackRecipient.indexPlayer
+      )?.ws;
+      const attackerSocket = this.users.find((user) => user.index === data.indexPlayer)?.ws;
+
+      const attackData = attackHandler(
+        attackRecipient.shipsMatrix as BattlefieldMatrixType,
+        data.x,
+        data.y
+      );
+      if (!attackData) return;
+
+      if (attackData.attackedSell === 'free') {
         const responseData: IAttackResponse = {
           id,
           type,
           data: {
             currentPlayer: data.indexPlayer,
-            status: 'shot',
+            status: 'miss',
             position: {
               x: data.x,
               y: data.y,
@@ -497,143 +550,233 @@ class MessageHandler {
         attackerSocket?.send(JSON.stringify(responseData));
         attackRecipientSocket?.send(JSON.stringify(responseData));
 
+        currentGame && currentGame.changeCurrentPlayer(attackRecipient.indexPlayer);
         type = 'turn';
         const turnResponse: ITurnResponse = {
           id,
           type,
           data: {
-            currentPlayer: currentGame.currentPlayer,
+            currentPlayer: currentGame?.currentPlayer as number,
           },
         };
         turnResponse.data = JSON.stringify(turnResponse.data);
         attackerSocket?.send(JSON.stringify(turnResponse));
         attackRecipientSocket?.send(JSON.stringify(turnResponse));
-      } else {
-        const updatedMatrix = attackData.updatedMatrix as BattlefieldMatrixType;
-        this.activeGamesData = this.activeGamesData.map((activeGame) => {
-          if (activeGame.gameId !== data.gameId) {
-            return activeGame;
-          } else {
-            activeGame.gamePlayersData = activeGame.gamePlayersData.map((player) => {
-              if (player.indexPlayer === attackRecipient.indexPlayer) {
-                player.shipsMatrix = updatedMatrix;
-              }
-              return player;
-            });
-            return activeGame;
-          }
-        });
 
-        const lastShotResults = lastShotHandler(
-          updatedMatrix,
-          attackRecipient.killedShips,
-          data.x,
-          data.y
-        );
-        lastShotResults?.aroundShotsCoords?.forEach((aroundSellCoordinate) => {
-          const responseData: IAttackResponse = {
-            id,
-            type,
-            data: {
-              currentPlayer: data.indexPlayer,
-              status: 'miss',
-              position: {
-                x: aroundSellCoordinate.x,
-                y: aroundSellCoordinate.y,
-              },
-            },
-          };
-          responseData.data = JSON.stringify(responseData.data);
-          attackerSocket?.send(JSON.stringify(responseData));
-          attackRecipientSocket?.send(JSON.stringify(responseData));
-        });
-
-        lastShotResults?.killedShipSells.forEach((killedShipSellCoordinate) => {
-          const responseData: IAttackResponse = {
-            id,
-            type,
-            data: {
-              currentPlayer: data.indexPlayer,
-              status: 'killed',
-              position: {
-                x: killedShipSellCoordinate.x,
-                y: killedShipSellCoordinate.y,
-              },
-            },
-          };
-          responseData.data = JSON.stringify(responseData.data);
-          attackerSocket?.send(JSON.stringify(responseData));
-          attackRecipientSocket?.send(JSON.stringify(responseData));
-        });
-
-        currentGame?.addPlayerKilledShips(
-          lastShotResults?.killedShipSells as Array<IShipPositionData>,
-          attackRecipient.indexPlayer
-        );
-
-        if (
-          attackRecipient.killedShips?.filter((sell) => sell).length === KILLED_SHIPS_SELLS_COUNT
-        ) {
-          type = 'finish';
-          const finishResponse: IFinishResponse = {
-            id,
-            type,
-            data: {
-              winPlayer: data.indexPlayer,
-            },
-          };
-          finishResponse.data = JSON.stringify(finishResponse.data);
-          attackerSocket?.send(JSON.stringify(finishResponse));
-          attackRecipientSocket?.send(JSON.stringify(finishResponse));
-
-          this.activeGamesData = this.activeGamesData.filter(
-            (activeGame) => activeGame.gameId !== currentGame.gameId
+        if (isAttackRecipientBot) {
+          const randomAttackData = randomAttackGenerator(
+            attacker.shipsMatrix as BattlefieldMatrixType
           );
+          type = 'attack';
+          const attackData: IAttackRequestData = {
+            x: randomAttackData.x,
+            y: randomAttackData.y,
+            gameId: data.gameId,
+            indexPlayer: attackRecipient.indexPlayer,
+          };
+          this.attack(attackData, type, id, websocketsServer);
+        }
+      } else {
+        if (!attackData.isKilled) {
+          const updatedMatrix = attackData.updatedMatrix as BattlefieldMatrixType;
+          attackRecipient.updateShipsMatrix(updatedMatrix);
 
-          const attackerData = this.users.find(
-            (user) => user.index === data.indexPlayer
-          ) as IUserData;
-          const foundWinner = this.winners.find((winner) => winner.name === attackerData.name);
-
-          if (!foundWinner) {
-            const newWinner = new Winner(attackerData.name, 1);
-            this.winners = [...this.winners, newWinner];
-          } else {
-            foundWinner.addOneWin();
-          }
-
-          type = 'update_winners';
-          const winnersResponse: IWinnersResponse = {
+          const responseData: IAttackResponse = {
             id,
             type,
-            data: this.winners,
+            data: {
+              currentPlayer: data.indexPlayer,
+              status: 'shot',
+              position: {
+                x: data.x,
+                y: data.y,
+              },
+            },
           };
-          winnersResponse.data = JSON.stringify(winnersResponse.data);
-          attackerSocket?.send(JSON.stringify(winnersResponse));
-          attackRecipientSocket?.send(JSON.stringify(winnersResponse));
+          responseData.data = JSON.stringify(responseData.data);
+          attackerSocket?.send(JSON.stringify(responseData));
+          attackRecipientSocket?.send(JSON.stringify(responseData));
 
-          websocketsServer.clients.forEach((client) => {
-            if (
-              client !== attackerSocket &&
-              client !== attackRecipientSocket &&
-              client.readyState === WebSocket.OPEN
-            ) {
-              client.send(JSON.stringify(winnersResponse));
-            }
-          });
-        } else {
           type = 'turn';
           const turnResponse: ITurnResponse = {
             id,
             type,
             data: {
-              currentPlayer: currentGame.currentPlayer,
+              currentPlayer: currentGame?.currentPlayer as number,
             },
           };
           turnResponse.data = JSON.stringify(turnResponse.data);
           attackerSocket?.send(JSON.stringify(turnResponse));
           attackRecipientSocket?.send(JSON.stringify(turnResponse));
+
+          if (isAttackRecipientHuman) {
+            const randomAttackData = randomAttackGenerator(
+              attackRecipient.shipsMatrix as BattlefieldMatrixType
+            );
+            type = 'attack';
+            const attackData: IAttackRequestData = {
+              x: randomAttackData.x,
+              y: randomAttackData.y,
+              gameId: data.gameId,
+              indexPlayer: data.indexPlayer,
+            };
+            this.attack(attackData, type, id, websocketsServer);
+          }
+        } else {
+          const updatedMatrix = attackData.updatedMatrix as BattlefieldMatrixType;
+          attackRecipient.updateShipsMatrix(updatedMatrix);
+
+          const lastShotResults = lastShotHandler(
+            updatedMatrix,
+            attackRecipient.killedShips,
+            data.x,
+            data.y
+          );
+          lastShotResults?.aroundShotsCoords?.forEach((aroundSellCoordinate) => {
+            const responseData: IAttackResponse = {
+              id,
+              type,
+              data: {
+                currentPlayer: data.indexPlayer,
+                status: 'miss',
+                position: {
+                  x: aroundSellCoordinate.x,
+                  y: aroundSellCoordinate.y,
+                },
+              },
+            };
+            responseData.data = JSON.stringify(responseData.data);
+            attackerSocket?.send(JSON.stringify(responseData));
+            attackRecipientSocket?.send(JSON.stringify(responseData));
+          });
+
+          lastShotResults?.killedShipSells.forEach((killedShipSellCoordinate) => {
+            const responseData: IAttackResponse = {
+              id,
+              type,
+              data: {
+                currentPlayer: data.indexPlayer,
+                status: 'killed',
+                position: {
+                  x: killedShipSellCoordinate.x,
+                  y: killedShipSellCoordinate.y,
+                },
+              },
+            };
+            responseData.data = JSON.stringify(responseData.data);
+            attackerSocket?.send(JSON.stringify(responseData));
+            attackRecipientSocket?.send(JSON.stringify(responseData));
+          });
+
+          currentGame?.addPlayerKilledShips(
+            lastShotResults?.killedShipSells as Array<IShipPositionData>,
+            attackRecipient.indexPlayer
+          );
+
+          if (
+            attackRecipient.killedShips?.filter((sell) => sell).length === KILLED_SHIPS_SELLS_COUNT
+          ) {
+            type = 'finish';
+            const finishResponse: IFinishResponse = {
+              id,
+              type,
+              data: {
+                winPlayer: data.indexPlayer,
+              },
+            };
+            finishResponse.data = JSON.stringify(finishResponse.data);
+            attackerSocket?.send(JSON.stringify(finishResponse));
+            attackRecipientSocket?.send(JSON.stringify(finishResponse));
+
+            if (!currentSingleGame) {
+              this.activeGamesData = this.activeGamesData.filter(
+                (activeGame) => activeGame.gameId !== currentGame?.gameId
+              );
+
+              const attackerData = this.users.find(
+                (user) => user.index === data.indexPlayer
+              ) as IUserData;
+              const foundWinner = this.winners.find((winner) => winner.name === attackerData.name);
+
+              if (!foundWinner) {
+                const newWinner = new Winner(attackerData.name, 1);
+                this.winners = [...this.winners, newWinner];
+              } else {
+                foundWinner.addOneWin();
+              }
+            } else {
+              if (isAttackRecipientBot) {
+                this.activeSingleGamesData = this.activeSingleGamesData.filter(
+                  (activeSingleGame) => activeSingleGame.gameId !== currentGame?.gameId
+                );
+
+                const attackerData = this.users.find(
+                  (user) => user.index === data.indexPlayer
+                ) as IUserData;
+                const foundWinner = this.winners.find(
+                  (winner) => winner.name === attackerData.name
+                );
+
+                if (!foundWinner) {
+                  const newWinner = new Winner(attackerData.name, 1);
+                  this.winners = [...this.winners, newWinner];
+                } else {
+                  foundWinner.addOneWin();
+                }
+              }
+            }
+
+            type = 'update_winners';
+            const winnersResponse: IWinnersResponse = {
+              id,
+              type,
+              data: this.winners,
+            };
+            winnersResponse.data = JSON.stringify(winnersResponse.data);
+            attackerSocket?.send(JSON.stringify(winnersResponse));
+            attackRecipientSocket?.send(JSON.stringify(winnersResponse));
+
+            websocketsServer.clients.forEach((client) => {
+              if (
+                client !== attackerSocket &&
+                client !== attackRecipientSocket &&
+                client.readyState === WebSocket.OPEN
+              ) {
+                client.send(JSON.stringify(winnersResponse));
+              }
+            });
+          } else {
+            type = 'turn';
+            const turnResponse: ITurnResponse = {
+              id,
+              type,
+              data: {
+                currentPlayer: currentGame?.currentPlayer as number,
+              },
+            };
+            turnResponse.data = JSON.stringify(turnResponse.data);
+            attackerSocket?.send(JSON.stringify(turnResponse));
+            attackRecipientSocket?.send(JSON.stringify(turnResponse));
+
+            if (isAttackRecipientHuman) {
+              const randomAttackData = randomAttackGenerator(
+                attackRecipient.shipsMatrix as BattlefieldMatrixType
+              );
+              type = 'attack';
+              const attackData: IAttackRequestData = {
+                x: randomAttackData.x,
+                y: randomAttackData.y,
+                gameId: data.gameId,
+                indexPlayer: data.indexPlayer,
+              };
+              this.attack(attackData, type, id, websocketsServer);
+            }
+          }
         }
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error(error);
       }
     }
   }
@@ -661,6 +804,29 @@ class MessageHandler {
     };
 
     this.attack(attackData, type, id, websocketsServer);
+  }
+
+  createSingleGame(type: WebsocketMessageType, id: number, ws: WebSocket) {
+    type = 'create_game';
+    this.gameCounter++;
+    this.botsCounter++;
+
+    const gameCreator = this.users.find((user) => user.ws === ws) as IUserData;
+    const ownerGameData = new Game(this.gameCounter, gameCreator.index);
+
+    const botShips = botShipsGenerator();
+    const gameOwnerBot = new ActiveGamePlayer(botShips, this.users.length + this.botsCounter, []);
+    const newActiveSingleGame = new ActiveGame(this.gameCounter, [], gameOwnerBot.indexPlayer);
+    newActiveSingleGame.addNewUser(gameOwnerBot);
+    this.activeSingleGamesData = [...this.activeSingleGamesData, newActiveSingleGame];
+
+    gameCreator.ws?.send(
+      JSON.stringify({
+        type,
+        id,
+        data: JSON.stringify(ownerGameData),
+      })
+    );
   }
 }
 

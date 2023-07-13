@@ -1,10 +1,14 @@
 import {
   BATTLEFIELD_MATRIX_SIZE,
   HUGE_SHIP_LENGTH,
+  LARGE_SHIPS_COUNT,
   LARGE_SHIP_LENGTH,
+  MEDIUM_SHIPS_COUNT,
   MEDIUM_SHIP_LENGTH,
+  SMALL_SHIPS_COUNT,
+  SMALL_SHIP_LENGTH,
 } from '../constants/constants';
-import { SellCoordinate } from '../schemas/schemas';
+import { SellCoordinate, Ship } from '../schemas/schemas';
 import {
   BattlefieldMatrixType,
   IAtackResult,
@@ -13,10 +17,116 @@ import {
   IShipPositionData,
   Nullable,
   iShipKillAttackResult,
+  ShipType,
 } from '../types/types';
 
 const freeSell: SellType = 'free';
 const isVertical = (direction: boolean) => direction;
+
+const isInMatrix = (x: number, y: number): boolean => {
+  switch (true) {
+    case x < 0:
+      return false;
+    case x > BATTLEFIELD_MATRIX_SIZE - 1:
+      return false;
+    case y < 0:
+      return false;
+    case y > BATTLEFIELD_MATRIX_SIZE - 1:
+      return false;
+    default:
+      return true;
+  }
+};
+
+const shipLengthDeterminer = (shipType: ShipType): number => {
+  switch (shipType) {
+    case 'huge':
+      return HUGE_SHIP_LENGTH;
+    case 'large':
+      return LARGE_SHIP_LENGTH;
+    case 'medium':
+      return MEDIUM_SHIP_LENGTH;
+    default:
+      return SMALL_SHIP_LENGTH;
+  }
+};
+
+const isAroundSellsFree = (shipsMatrix: BattlefieldMatrixType, x: number, y: number): boolean => {
+  switch (true) {
+    case shipsMatrix?.[y]?.[x - 1] && shipsMatrix?.[y]?.[x - 1].startsWith('u'):
+      return false;
+    case shipsMatrix?.[y]?.[x + 1] && shipsMatrix?.[y]?.[x + 1].startsWith('u'):
+      return false;
+    case shipsMatrix?.[y - 1]?.[x] && shipsMatrix?.[y - 1]?.[x].startsWith('u'):
+      return false;
+    case shipsMatrix?.[y + 1]?.[x] && shipsMatrix?.[y + 1]?.[x].startsWith('u'):
+      return false;
+    case shipsMatrix?.[y - 1]?.[x - 1] && shipsMatrix?.[y - 1]?.[x - 1].startsWith('u'):
+      return false;
+    case shipsMatrix?.[y + 1]?.[x - 1] && shipsMatrix?.[y + 1]?.[x - 1].startsWith('u'):
+      return false;
+    case shipsMatrix?.[y - 1]?.[x + 1] && shipsMatrix?.[y - 1]?.[x + 1].startsWith('u'):
+      return false;
+    case shipsMatrix?.[y + 1]?.[x + 1] && shipsMatrix?.[y + 1]?.[x + 1].startsWith('u'):
+      return false;
+  }
+  return true;
+};
+
+const canShipBePlaced = (ship: IShipData, shipsMatrix: BattlefieldMatrixType): boolean => {
+  if (ship.direction) {
+    for (let i = 0; i <= ship.length; i++) {
+      if (shipsMatrix?.[ship.position.y + i]?.[ship.position.x] !== 'free') return false;
+      if (!isAroundSellsFree(shipsMatrix, ship.position.x, ship.position.y + i)) return false;
+    }
+  } else {
+    for (let i = 0; i <= ship.length; i++) {
+      if (shipsMatrix?.[ship.position.y]?.[ship.position.x + i] !== 'free') return false;
+      if (!isAroundSellsFree(shipsMatrix, ship.position.x, ship.position.y + i)) return false;
+    }
+  }
+
+  return true;
+};
+
+const randomFreeSellGenerator = (shipsMatrix: BattlefieldMatrixType): IShipPositionData => {
+  let randomX = Math.round(Math.random() * (BATTLEFIELD_MATRIX_SIZE - 1));
+  let randomY = Math.round(Math.random() * (BATTLEFIELD_MATRIX_SIZE - 1));
+
+  while (shipsMatrix?.[randomY]?.[randomX] && !shipsMatrix[randomY][randomX].startsWith('f')) {
+    randomX = Math.round(Math.random() * (BATTLEFIELD_MATRIX_SIZE - 1));
+    randomY = Math.round(Math.random() * (BATTLEFIELD_MATRIX_SIZE - 1));
+  }
+  return { x: randomX, y: randomY };
+};
+
+const randomShipStartPositionGenerator = (
+  shipsMatrix: BattlefieldMatrixType,
+  shipType: ShipType,
+  shipLength: number,
+  isVertical: boolean
+): IShipPositionData => {
+  let randomX = Math.round(Math.random() * (BATTLEFIELD_MATRIX_SIZE - 1));
+  let randomY = Math.round(Math.random() * (BATTLEFIELD_MATRIX_SIZE - 1));
+
+  while (
+    !canShipBePlaced(
+      {
+        direction: isVertical,
+        length: shipLength,
+        type: shipType,
+        position: { x: randomX, y: randomY },
+      },
+      shipsMatrix
+    )
+  ) {
+    const newFreSellCoords = randomFreeSellGenerator(shipsMatrix);
+    randomX = newFreSellCoords.x;
+    randomY = newFreSellCoords.y;
+  }
+
+  return { x: randomX, y: randomY };
+};
 
 export const battlefieldMatrixGenerator = (ships: Array<IShipData>): BattlefieldMatrixType => {
   const matrix: BattlefieldMatrixType = [];
@@ -79,10 +189,10 @@ export const attackHandler = (
   x: number,
   y: number
 ): Nullable<IAtackResult> => {
-  const attackedSell: SellType = shipsMatrix[y][x];
-  if (attackedSell.startsWith('d')) return null;
+  const attackedSell: SellType = shipsMatrix?.[y]?.[x];
+  if (attackedSell && attackedSell.startsWith('d')) return null;
 
-  if (attackedSell.startsWith('f')) {
+  if (attackedSell && attackedSell.startsWith('f')) {
     return { attackedSell, updatedMatrix: null, isKilled: false };
   } else {
     switch (attackedSell) {
@@ -111,21 +221,6 @@ export const attackHandler = (
       default:
         return { attackedSell, updatedMatrix: null, isKilled: false };
     }
-  }
-};
-
-const isInMatrix = (x: number, y: number): boolean => {
-  switch (true) {
-    case x < 0:
-      return false;
-    case x > BATTLEFIELD_MATRIX_SIZE - 1:
-      return false;
-    case y < 0:
-      return false;
-    case y > BATTLEFIELD_MATRIX_SIZE - 1:
-      return false;
-    default:
-      return true;
   }
 };
 
@@ -203,12 +298,68 @@ export const lastShotHandler = (
 };
 
 export const randomAttackGenerator = (shipsMatrix: BattlefieldMatrixType): IShipPositionData => {
-  let randomX = Math.round(Math.random() * BATTLEFIELD_MATRIX_SIZE - 1);
-  let randomY = Math.round(Math.random() * BATTLEFIELD_MATRIX_SIZE - 1);
+  let randomX = Math.round(Math.random() * (BATTLEFIELD_MATRIX_SIZE - 1));
+  let randomY = Math.round(Math.random() * (BATTLEFIELD_MATRIX_SIZE - 1));
 
-  while (shipsMatrix[randomY][randomX].startsWith('d')) {
-    randomX = Math.round(Math.random() * BATTLEFIELD_MATRIX_SIZE - 1);
-    randomY = Math.round(Math.random() * BATTLEFIELD_MATRIX_SIZE - 1);
+  while (shipsMatrix?.[randomY]?.[randomX] && shipsMatrix?.[randomY]?.[randomX].startsWith('d')) {
+    randomX = Math.round(Math.random() * (BATTLEFIELD_MATRIX_SIZE - 1));
+    randomY = Math.round(Math.random() * (BATTLEFIELD_MATRIX_SIZE - 1));
   }
   return { x: randomX, y: randomY };
+};
+
+export const botShipsGenerator = (): Array<IShipData> => {
+  const botShips: Array<IShipData> = [];
+
+  const shipType: ShipType = 'huge';
+  const length = shipLengthDeterminer(shipType);
+  const isVertical = Math.round(Math.random() * 1) ? true : false;
+  const shipPosition = randomShipStartPositionGenerator(
+    battlefieldMatrixGenerator(botShips),
+    shipType,
+    length,
+    isVertical
+  );
+  botShips.push(new Ship(shipPosition, isVertical, length, shipType));
+
+  for (let i = 0; i < LARGE_SHIPS_COUNT; i++) {
+    const shipType: ShipType = 'large';
+    const length = shipLengthDeterminer(shipType);
+    const isVertical = Math.round(Math.random() * 1) ? true : false;
+    const shipPosition = randomShipStartPositionGenerator(
+      battlefieldMatrixGenerator(botShips),
+      shipType,
+      length,
+      isVertical
+    );
+    botShips.push(new Ship(shipPosition, isVertical, length, shipType));
+  }
+
+  for (let i = 0; i < MEDIUM_SHIPS_COUNT; i++) {
+    const shipType: ShipType = 'medium';
+    const length = shipLengthDeterminer(shipType);
+    const isVertical = Math.round(Math.random() * 1) ? true : false;
+    const shipPosition = randomShipStartPositionGenerator(
+      battlefieldMatrixGenerator(botShips),
+      shipType,
+      length,
+      isVertical
+    );
+    botShips.push(new Ship(shipPosition, isVertical, length, shipType));
+  }
+
+  for (let i = 0; i < SMALL_SHIPS_COUNT; i++) {
+    const shipType: ShipType = 'small';
+    const length = shipLengthDeterminer(shipType);
+    const isVertical = Math.round(Math.random() * 1) ? true : false;
+    const shipPosition = randomShipStartPositionGenerator(
+      battlefieldMatrixGenerator(botShips),
+      shipType,
+      length,
+      isVertical
+    );
+    botShips.push(new Ship(shipPosition, isVertical, length, shipType));
+  }
+
+  return botShips;
 };

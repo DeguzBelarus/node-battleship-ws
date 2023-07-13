@@ -10,6 +10,7 @@ import {
   IWinnerData,
   IShipData,
   BattlefieldMatrixType,
+  ShipType,
 } from '../types/types';
 
 export class User implements IUserData {
@@ -22,6 +23,19 @@ export class User implements IUserData {
     this.index = index;
     this.password = password;
     this.ws = ws;
+  }
+}
+
+export class Ship implements IShipData {
+  position: IShipPositionData;
+  direction: boolean;
+  length: number;
+  type: ShipType;
+  constructor(position: IShipPositionData, direction: boolean, length: number, type: ShipType) {
+    this.position = position;
+    this.direction = direction;
+    this.length = length;
+    this.type = type;
   }
 }
 

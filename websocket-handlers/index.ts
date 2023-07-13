@@ -65,11 +65,19 @@ websocketsServer.on('connection', function connection(ws) {
             websocketsServer
           );
           break;
+        case 'single_play':
+          messageHandler.createSingleGame(messageData.type, messageData.id, ws);
+          break;
         case 'add_ships':
           const addUserShipsData = JSON.parse(
             messageData.data as string
           ) as IAddUserShipsRequestData;
-          messageHandler.addUserShips(addUserShipsData, messageData.type, messageData.id);
+          messageHandler.addUserShips(
+            addUserShipsData,
+            messageData.type,
+            messageData.id,
+            websocketsServer
+          );
           break;
         case 'attack':
           const attackData = JSON.parse(messageData.data as string) as IAttackRequestData;
