@@ -812,7 +812,7 @@ class MessageHandler {
     this.botsCounter++;
 
     const gameCreator = this.users.find((user) => user.ws === ws) as IUserData;
-    const ownerGameData = new Game(this.gameCounter, gameCreator.index);
+    const newSingleGame = new Game(this.gameCounter, gameCreator.index);
 
     const botShips = botShipsGenerator();
     const gameOwnerBot = new ActiveGamePlayer(botShips, this.users.length + this.botsCounter, []);
@@ -824,7 +824,7 @@ class MessageHandler {
       JSON.stringify({
         type,
         id,
-        data: JSON.stringify(ownerGameData),
+        data: JSON.stringify(newSingleGame),
       })
     );
   }
