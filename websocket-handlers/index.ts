@@ -14,6 +14,12 @@ import { DEFAULT_ID_VALUE } from '../constants/constants';
 
 const websocketsServer = new WebSocketServer(WEBSOCKET_CONFIG);
 
+process.on('SIGINT', () => {
+  websocketsServer.clients.forEach((ws) => {
+    ws.close();
+  });
+});
+
 websocketsServer.on('listening', () => {
   console.log(`Websocket server is listening port ${WEBSOCKET_CONFIG.port}...`);
 });
