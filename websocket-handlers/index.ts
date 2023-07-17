@@ -13,6 +13,11 @@ import { messageHandler } from './handlers';
 import { DEFAULT_ID_VALUE } from '../constants/constants';
 
 const websocketsServer = new WebSocketServer(WEBSOCKET_CONFIG);
+
+websocketsServer.on('listening', () => {
+  console.log(`Websocket server is listening port ${WEBSOCKET_CONFIG.port}...`);
+});
+
 websocketsServer.on('connection', function connection(ws) {
   console.log(`connection...total online users: ${websocketsServer.clients.size}`);
 
