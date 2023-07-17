@@ -388,6 +388,8 @@ class MessageHandler {
       const botPlayerBattlefield = battlefieldMatrixGenerator(
         foundActiveSingleGame.gamePlayersData[0].ships
       );
+      console.log(botPlayerBattlefield);
+
       const humanPlayerBattlefield = battlefieldMatrixGenerator(
         foundActiveSingleGame.gamePlayersData[1].ships
       );
@@ -787,9 +789,13 @@ class MessageHandler {
     id: number,
     websocketsServer: WebSocket.Server<typeof WebSocket, typeof IncomingMessage>
   ) {
-    const currentGame = this.activeGamesData.find(
-      (activeGame) => activeGame.gameId === data.gameId
-    ) as IActiveGame;
+    let currentGame = this.activeGamesData.find((activeGame) => activeGame.gameId === data.gameId);
+    const currentSingleGame = this.activeSingleGamesData.find(
+      (activeSingleGame) => activeSingleGame.gameId === data.gameId
+    );
+
+    currentGame = currentSingleGame ? currentSingleGame : currentGame;
+
     const attackRecipientMatrix = currentGame?.gamePlayersData.filter(
       (playerData) => playerData.indexPlayer !== data.indexPlayer
     )[0].shipsMatrix as BattlefieldMatrixType;
@@ -799,7 +805,7 @@ class MessageHandler {
     const attackData: IAttackRequestData = {
       x: randomAttackData.x,
       y: randomAttackData.y,
-      gameId: currentGame.gameId,
+      gameId: currentGame?.gameId as number,
       indexPlayer: data.indexPlayer,
     };
 
