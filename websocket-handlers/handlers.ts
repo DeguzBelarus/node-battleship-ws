@@ -505,6 +505,7 @@ class MessageHandler {
       const attacker = currentGame?.gamePlayersData.filter(
         (playerData) => playerData.indexPlayer === data.indexPlayer
       )[0] as IActiveGamePlayerData;
+      if (!attackRecipient || !attacker) return;
 
       const isAttackRecipientBot =
         currentSingleGame &&
