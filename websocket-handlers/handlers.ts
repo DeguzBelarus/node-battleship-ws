@@ -388,8 +388,6 @@ class MessageHandler {
       const botPlayerBattlefield = battlefieldMatrixGenerator(
         foundActiveSingleGame.gamePlayersData[0].ships
       );
-      console.log(botPlayerBattlefield);
-
       const humanPlayerBattlefield = battlefieldMatrixGenerator(
         foundActiveSingleGame.gamePlayersData[1].ships
       );
