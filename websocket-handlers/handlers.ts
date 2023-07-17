@@ -498,6 +498,7 @@ class MessageHandler {
       if (currentSingleGame && data.indexPlayer !== currentSingleGame?.currentPlayer) return;
 
       currentGame = currentSingleGame ? currentSingleGame : currentGame;
+      if (!currentGame) return;
 
       const attackRecipient = currentGame?.gamePlayersData.filter(
         (playerData) => playerData.indexPlayer !== data.indexPlayer
