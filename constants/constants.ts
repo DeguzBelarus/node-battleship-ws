@@ -1,0 +1,15 @@
+export const ROOT_URL = '/';
+export const MIN_USERNAME_LENGTH = 5;
+export const MIN_PASSWORD_LENGTH = 5;
+export const DEFAULT_ID_VALUE = 0;
+export const BATTLEFIELD_MATRIX_SIZE = 10;
+export const KILLED_SHIPS_SELLS_COUNT = 20;
+export const HUGE_SHIP_LENGTH = 4;
+export const HUGE_SHIPS_COUNT = 1;
+export const LARGE_SHIP_LENGTH = 3;
+export const LARGE_SHIPS_COUNT = 2;
+export const MEDIUM_SHIP_LENGTH = 2;
+export const MEDIUM_SHIPS_COUNT = 3;
+export const SMALL_SHIP_LENGTH = 1;
+export const SMALL_SHIPS_COUNT = 4;
+export const EMPTY_STRING = '';
