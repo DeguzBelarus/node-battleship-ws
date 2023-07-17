@@ -75,12 +75,12 @@ const isAroundSellsFree = (shipsMatrix: BattlefieldMatrixType, x: number, y: num
 
 const canShipBePlaced = (ship: IShipData, shipsMatrix: BattlefieldMatrixType): boolean => {
   if (ship.direction) {
-    for (let i = 0; i <= ship.length + 1; i++) {
+    for (let i = 0; i <= ship.length; i++) {
       if (shipsMatrix?.[ship.position.y + i]?.[ship.position.x] !== 'free') return false;
       if (!isAroundSellsFree(shipsMatrix, ship.position.x, ship.position.y + i)) return false;
     }
   } else {
-    for (let i = 0; i <= ship.length + 1; i++) {
+    for (let i = 0; i <= ship.length; i++) {
       if (shipsMatrix?.[ship.position.y]?.[ship.position.x + i] !== 'free') return false;
       if (!isAroundSellsFree(shipsMatrix, ship.position.x, ship.position.y + i)) return false;
     }
