@@ -53,21 +53,21 @@ const shipLengthDeterminer = (shipType: ShipType): number => {
 
 const isAroundSellsFree = (shipsMatrix: BattlefieldMatrixType, x: number, y: number): boolean => {
   switch (true) {
-    case shipsMatrix?.[y]?.[x - 1] && shipsMatrix?.[y]?.[x - 1].startsWith('u'):
+    case shipsMatrix?.[y]?.[x - 1] && shipsMatrix?.[y]?.[x - 1] !== 'free':
       return false;
-    case shipsMatrix?.[y]?.[x + 1] && shipsMatrix?.[y]?.[x + 1].startsWith('u'):
+    case shipsMatrix?.[y]?.[x + 1] && shipsMatrix?.[y]?.[x + 1] !== 'free':
       return false;
-    case shipsMatrix?.[y - 1]?.[x] && shipsMatrix?.[y - 1]?.[x].startsWith('u'):
+    case shipsMatrix?.[y - 1]?.[x] && shipsMatrix?.[y - 1]?.[x] !== 'free':
       return false;
-    case shipsMatrix?.[y + 1]?.[x] && shipsMatrix?.[y + 1]?.[x].startsWith('u'):
+    case shipsMatrix?.[y + 1]?.[x] && shipsMatrix?.[y + 1]?.[x] !== 'free':
       return false;
-    case shipsMatrix?.[y - 1]?.[x - 1] && shipsMatrix?.[y - 1]?.[x - 1].startsWith('u'):
+    case shipsMatrix?.[y - 1]?.[x - 1] && shipsMatrix?.[y - 1]?.[x - 1] !== 'free':
       return false;
-    case shipsMatrix?.[y + 1]?.[x - 1] && shipsMatrix?.[y + 1]?.[x - 1].startsWith('u'):
+    case shipsMatrix?.[y + 1]?.[x - 1] && shipsMatrix?.[y + 1]?.[x - 1] !== 'free':
       return false;
-    case shipsMatrix?.[y - 1]?.[x + 1] && shipsMatrix?.[y - 1]?.[x + 1].startsWith('u'):
+    case shipsMatrix?.[y - 1]?.[x + 1] && shipsMatrix?.[y - 1]?.[x + 1] !== 'free':
       return false;
-    case shipsMatrix?.[y + 1]?.[x + 1] && shipsMatrix?.[y + 1]?.[x + 1].startsWith('u'):
+    case shipsMatrix?.[y + 1]?.[x + 1] && shipsMatrix?.[y + 1]?.[x + 1] !== 'free':
       return false;
   }
   return true;
