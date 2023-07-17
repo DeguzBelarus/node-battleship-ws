@@ -531,7 +531,35 @@ class MessageHandler {
         data.x,
         data.y
       );
-      if (!attackData) return;
+      if (!attackData) {
+        currentGame && currentGame.changeCurrentPlayer(attackRecipient.indexPlayer);
+        type = 'turn';
+        const turnResponse: ITurnResponse = {
+          id,
+          type,
+          data: {
+            currentPlayer: currentGame?.currentPlayer as number,
+          },
+        };
+        turnResponse.data = JSON.stringify(turnResponse.data);
+        attackerSocket?.send(JSON.stringify(turnResponse));
+        attackRecipientSocket?.send(JSON.stringify(turnResponse));
+
+        if (isAttackRecipientBot) {
+          const randomAttackData = randomAttackGenerator(
+            attacker.shipsMatrix as BattlefieldMatrixType
+          );
+          type = 'attack';
+          const attackData: IAttackRequestData = {
+            x: randomAttackData.x,
+            y: randomAttackData.y,
+            gameId: data.gameId,
+            indexPlayer: attackRecipient.indexPlayer,
+          };
+          this.attack(attackData, type, id, websocketsServer);
+        }
+        return;
+      }
 
       if (attackData.attackedSell === 'free') {
         const responseData: IAttackResponse = {
