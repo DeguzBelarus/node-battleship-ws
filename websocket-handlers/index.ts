@@ -37,6 +37,7 @@ websocketsServer.on('connection', function connection(ws) {
   ws.on('message', (data: Buffer) => {
     try {
       const messageData = JSON.parse(data.toString()) as IWebsocketMessage;
+      console.log(messageData.type);
       switch (messageData.type) {
         case 'reg':
           const registrationData = JSON.parse(
