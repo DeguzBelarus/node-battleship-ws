@@ -85,7 +85,6 @@ const canShipBePlaced = (ship: IShipData, shipsMatrix: BattlefieldMatrixType): b
       if (!isAroundSellsFree(shipsMatrix, ship.position.x + i, ship.position.y)) return false;
     }
   }
-
   return true;
 };
 
@@ -124,7 +123,6 @@ const randomShipStartPositionGenerator = (
     randomX = newFreSellCoords.x;
     randomY = newFreSellCoords.y;
   }
-
   return { x: randomX, y: randomY };
 };
 
@@ -360,6 +358,5 @@ export const botShipsGenerator = (): Array<IShipData> => {
     );
     botShips.push(new Ship(shipPosition, isVertical, length, shipType));
   }
-
   return botShips;
 };
